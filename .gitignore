@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+*.pyo
+.env
+*.egg-info/
+dist/
+.venv/
+venv/
+compliance/dataset.json
+compliance/output.json
+compliance/output.html
+compliance/output_baseline.json
+compliance/output_baseline.html
