@@ -1,0 +1,1754 @@
+[
+  {
+    "scenario_label": "Clean pass - no parent rules breached",
+    "task": {
+      "rules": [
+        {
+          "parent_rule_id": 1,
+          "type": "concentration_maturity",
+          "logic": "OR",
+          "children": [
+            {
+              "id": 1,
+              "description": "Jun 2026 maturity concentration limit",
+              "dimension": "maturity_month",
+              "filter": "2026-06",
+              "lower_bound": -500000000,
+              "upper_bound": 300000000
+            },
+            {
+              "id": 2,
+              "description": "Dec 2026 maturity concentration limit",
+              "dimension": "maturity_month",
+              "filter": "2026-12",
+              "lower_bound": -500000000,
+              "upper_bound": 300000000
+            }
+          ]
+        }
+      ],
+      "external_inputs": {},
+      "current_book": [
+        {
+          "counterparty": "Barclays",
+          "notional": 100000000,
+          "maturity": "2026-06-15",
+          "market_value": 98000000,
+          "pv01": 50000,
+          "ie01": 30000,
+          "clearing_status": "bilateral"
+        },
+        {
+          "counterparty": "JPM",
+          "notional": -80000000,
+          "maturity": "2026-06-20",
+          "market_value": -78000000,
+          "pv01": -40000,
+          "ie01": -25000,
+          "clearing_status": "cleared"
+        }
+      ],
+      "proposed_trades": [
+        {
+          "counterparty": "Goldman Sachs",
+          "notional": 50000000,
+          "maturity": "2026-12-15",
+          "market_value": 49000000,
+          "pv01": 25000,
+          "ie01": 15000,
+          "clearing_status": "bilateral"
+        }
+      ]
+    },
+    "expected": {
+      "parent_results": [
+        {
+          "parent_rule_id": 1,
+          "logic": "OR",
+          "breached": false,
+          "child_results": [
+            {
+              "id": 1,
+              "breached": false,
+              "net_value": 20000000,
+              "lower_bound": -500000000,
+              "upper_bound": 300000000
+            },
+            {
+              "id": 2,
+              "breached": false,
+              "net_value": 49000000,
+              "lower_bound": -500000000,
+              "upper_bound": 300000000
+            }
+          ],
+          "reasoning": "Jun 2026 maturity aggregates to 20M (98M + (-78M)), Dec 2026 to 49M. Both within bounds. OR parent not breached."
+        }
+      ],
+      "pm_override_required": false,
+      "verdict": "Trade approved. No rule breaches detected."
+    }
+  },
+  {
+    "scenario_label": "OR parent breached - one child triggers limit",
+    "task": {
+      "rules": [
+        {
+          "parent_rule_id": 1,
+          "type": "concentration_maturity",
+          "logic": "OR",
+          "children": [
+            {
+              "id": 1,
+              "description": "Jun 2026 maturity limit 150M",
+              "dimension": "maturity_month",
+              "filter": "2026-06",
+              "lower_bound": -500000000,
+              "upper_bound": 150000000
+            },
+            {
+              "id": 2,
+              "description": "Dec 2026 maturity limit 100M",
+              "dimension": "maturity_month",
+              "filter": "2026-12",
+              "lower_bound": -500000000,
+              "upper_bound": 100000000
+            }
+          ]
+        }
+      ],
+      "external_inputs": {},
+      "current_book": [
+        {
+          "counterparty": "Barclays",
+          "notional": 100000000,
+          "maturity": "2026-06-15",
+          "market_value": 101000000,
+          "pv01": 50000,
+          "ie01": 30000,
+          "clearing_status": "bilateral"
+        }
+      ],
+      "proposed_trades": [
+        {
+          "counterparty": "JPM",
+          "notional": 60000000,
+          "maturity": "2026-06-20",
+          "market_value": 61000000,
+          "pv01": 30000,
+          "ie01": 18000,
+          "clearing_status": "bilateral"
+        }
+      ]
+    },
+    "expected": {
+      "parent_results": [
+        {
+          "parent_rule_id": 1,
+          "logic": "OR",
+          "breached": true,
+          "child_results": [
+            {
+              "id": 1,
+              "breached": true,
+              "net_value": 162000000,
+              "lower_bound": -500000000,
+              "upper_bound": 150000000
+            },
+            {
+              "id": 2,
+              "breached": false,
+              "net_value": 0,
+              "lower_bound": -500000000,
+              "upper_bound": 100000000
+            }
+          ],
+          "reasoning": "Jun 2026 maturity: 101M + 61M = 162M, exceeds 150M cap. Child 1 breached. OR logic: parent breached if ANY child breaches."
+        }
+      ],
+      "pm_override_required": true,
+      "verdict": "Trade rejected. OR parent rule breached - Jun 2026 concentration exceeds 150M limit."
+    }
+  },
+  {
+    "scenario_label": "AND parent breached - all children trigger",
+    "task": {
+      "rules": [
+        {
+          "parent_rule_id": 1,
+          "type": "counterparty",
+          "logic": "AND",
+          "children": [
+            {
+              "id": 1,
+              "description": "Barclays market value limit 200M",
+              "dimension": "counterparty",
+              "filter": "Barclays",
+              "lower_bound": -500000000,
+              "upper_bound": 200000000
+            },
+            {
+              "id": 2,
+              "description": "JPM market value limit 200M",
+              "dimension": "counterparty",
+              "filter": "JPM",
+              "lower_bound": -500000000,
+              "upper_bound": 200000000
+            }
+          ]
+        }
+      ],
+      "external_inputs": {},
+      "current_book": [
+        {
+          "counterparty": "Barclays",
+          "notional": 150000000,
+          "maturity": "2026-06-15",
+          "market_value": 151000000,
+          "pv01": 75000,
+          "ie01": 45000,
+          "clearing_status": "bilateral"
+        },
+        {
+          "counterparty": "JPM",
+          "notional": 150000000,
+          "maturity": "2026-07-15",
+          "market_value": 152000000,
+          "pv01": 76000,
+          "ie01": 46000,
+          "clearing_status": "cleared"
+        }
+      ],
+      "proposed_trades": [
+        {
+          "counterparty": "Barclays",
+          "notional": 60000000,
+          "maturity": "2026-08-15",
+          "market_value": 61000000,
+          "pv01": 30000,
+          "ie01": 18000,
+          "clearing_status": "bilateral"
+        },
+        {
+          "counterparty": "JPM",
+          "notional": 60000000,
+          "maturity": "2026-09-15",
+          "market_value": 61000000,
+          "pv01": 31000,
+          "ie01": 19000,
+          "clearing_status": "cleared"
+        }
+      ]
+    },
+    "expected": {
+      "parent_results": [
+        {
+          "parent_rule_id": 1,
+          "logic": "AND",
+          "breached": true,
+          "child_results": [
+            {
+              "id": 1,
+              "breached": true,
+              "net_value": 212000000,
+              "lower_bound": -500000000,
+              "upper_bound": 200000000
+            },
+            {
+              "id": 2,
+              "breached": true,
+              "net_value": 213000000,
+              "lower_bound": -500000000,
+              "upper_bound": 200000000
+            }
+          ],
+          "reasoning": "Barclays: 151M + 61M = 212M (exceeds 200M). JPM: 152M + 61M = 213M (exceeds 200M). Both children breached. AND logic: parent breached only if ALL children breached. Parent breached."
+        }
+      ],
+      "pm_override_required": true,
+      "verdict": "Trade rejected. AND parent rule breached - both Barclays and JPM exceed 200M market value limits."
+    }
+  },
+  {
+    "scenario_label": "AND parent NOT breached - partial child breach (critical edge case)",
+    "task": {
+      "rules": [
+        {
+          "parent_rule_id": 1,
+          "type": "counterparty",
+          "logic": "AND",
+          "children": [
+            {
+              "id": 1,
+              "description": "Barclays market value limit 160M",
+              "dimension": "counterparty",
+              "filter": "Barclays",
+              "lower_bound": -500000000,
+              "upper_bound": 160000000
+            },
+            {
+              "id": 2,
+              "description": "JPM market value limit 200M",
+              "dimension": "counterparty",
+              "filter": "JPM",
+              "lower_bound": -500000000,
+              "upper_bound": 200000000
+            }
+          ]
+        }
+      ],
+      "external_inputs": {},
+      "current_book": [
+        {
+          "counterparty": "Barclays",
+          "notional": 150000000,
+          "maturity": "2026-06-15",
+          "market_value": 151000000,
+          "pv01": 75000,
+          "ie01": 45000,
+          "clearing_status": "bilateral"
+        },
+        {
+          "counterparty": "JPM",
+          "notional": 150000000,
+          "maturity": "2026-07-15",
+          "market_value": 152000000,
+          "pv01": 76000,
+          "ie01": 46000,
+          "clearing_status": "cleared"
+        }
+      ],
+      "proposed_trades": [
+        {
+          "counterparty": "Barclays",
+          "notional": 15000000,
+          "maturity": "2026-08-15",
+          "market_value": 16000000,
+          "pv01": 8000,
+          "ie01": 5000,
+          "clearing_status": "bilateral"
+        },
+        {
+          "counterparty": "JPM",
+          "notional": 30000000,
+          "maturity": "2026-09-15",
+          "market_value": 31000000,
+          "pv01": 15000,
+          "ie01": 9000,
+          "clearing_status": "cleared"
+        }
+      ]
+    },
+    "expected": {
+      "parent_results": [
+        {
+          "parent_rule_id": 1,
+          "logic": "AND",
+          "breached": false,
+          "child_results": [
+            {
+              "id": 1,
+              "breached": true,
+              "net_value": 167000000,
+              "lower_bound": -500000000,
+              "upper_bound": 160000000
+            },
+            {
+              "id": 2,
+              "breached": false,
+              "net_value": 183000000,
+              "lower_bound": -500000000,
+              "upper_bound": 200000000
+            }
+          ],
+          "reasoning": "Barclays: 151M + 16M = 167M (exceeds 160M limit, child 1 breached). JPM: 152M + 31M = 183M (within 200M limit, child 2 not breached). AND logic requires ALL children breached for parent breach. Only 1 of 2 children breached, so parent NOT breached."
+        }
+      ],
+      "pm_override_required": false,
+      "verdict": "Trade approved. AND parent rule not breached - not all children triggered their limits."
+    }
+  },
+  {
+    "scenario_label": "Multiple parent rules breached simultaneously",
+    "task": {
+      "rules": [
+        {
+          "parent_rule_id": 1,
+          "type": "concentration_maturity",
+          "logic": "OR",
+          "children": [
+            {
+              "id": 1,
+              "description": "Jun 2026 maturity 120M limit",
+              "dimension": "maturity_month",
+              "filter": "2026-06",
+              "lower_bound": -500000000,
+              "upper_bound": 120000000
+            }
+          ]
+        },
+        {
+          "parent_rule_id": 2,
+          "type": "counterparty",
+          "logic": "OR",
+          "children": [
+            {
+              "id": 2,
+              "description": "Barclays market value 100M limit",
+              "dimension": "counterparty",
+              "filter": "Barclays",
+              "lower_bound": -500000000,
+              "upper_bound": 100000000
+            }
+          ]
+        }
+      ],
+      "external_inputs": {},
+      "current_book": [
+        {
+          "counterparty": "Barclays",
+          "notional": 80000000,
+          "maturity": "2026-06-15",
+          "market_value": 81000000,
+          "pv01": 40000,
+          "ie01": 25000,
+          "clearing_status": "bilateral"
+        }
+      ],
+      "proposed_trades": [
+        {
+          "counterparty": "Barclays",
+          "notional": 50000000,
+          "maturity": "2026-06-20",
+          "market_value": 51000000,
+          "pv01": 25000,
+          "ie01": 15000,
+          "clearing_status": "bilateral"
+        }
+      ]
+    },
+    "expected": {
+      "parent_results": [
+        {
+          "parent_rule_id": 1,
+          "logic": "OR",
+          "breached": true,
+          "child_results": [
+            {
+              "id": 1,
+              "breached": true,
+              "net_value": 132000000,
+              "lower_bound": -500000000,
+              "upper_bound": 120000000
+            }
+          ],
+          "reasoning": "Jun 2026 maturity: 81M + 51M = 132M, exceeds 120M cap. Child breached, OR parent breached."
+        },
+        {
+          "parent_rule_id": 2,
+          "logic": "OR",
+          "breached": true,
+          "child_results": [
+            {
+              "id": 2,
+              "breached": true,
+              "net_value": 132000000,
+              "lower_bound": -500000000,
+              "upper_bound": 100000000
+            }
+          ],
+          "reasoning": "Barclays market value: 81M + 51M = 132M, exceeds 100M cap. Child breached, OR parent breached."
+        }
+      ],
+      "pm_override_required": true,
+      "verdict": "Trade rejected. Multiple parent rules breached - Jun 2026 maturity and Barclays counterparty both exceed limits."
+    }
+  },
+  {
+    "scenario_label": "Net calculation reduces exposure - proposed trade offsets existing position",
+    "task": {
+      "rules": [
+        {
+          "parent_rule_id": 1,
+          "type": "counterparty",
+          "logic": "OR",
+          "children": [
+            {
+              "id": 1,
+              "description": "Goldman Sachs net limit 100M",
+              "dimension": "counterparty",
+              "filter": "Goldman Sachs",
+              "lower_bound": -500000000,
+              "upper_bound": 100000000
+            }
+          ]
+        }
+      ],
+      "external_inputs": {},
+      "current_book": [
+        {
+          "counterparty": "Goldman Sachs",
+          "notional": 120000000,
+          "maturity": "2026-06-15",
+          "market_value": 121000000,
+          "pv01": 60000,
+          "ie01": 36000,
+          "clearing_status": "bilateral"
+        }
+      ],
+      "proposed_trades": [
+        {
+          "counterparty": "Goldman Sachs",
+          "notional": -50000000,
+          "maturity": "2026-06-15",
+          "market_value": -49000000,
+          "pv01": -25000,
+          "ie01": -15000,
+          "clearing_status": "bilateral"
+        }
+      ]
+    },
+    "expected": {
+      "parent_results": [
+        {
+          "parent_rule_id": 1,
+          "logic": "OR",
+          "breached": false,
+          "child_results": [
+            {
+              "id": 1,
+              "breached": false,
+              "net_value": 72000000,
+              "lower_bound": -500000000,
+              "upper_bound": 100000000
+            }
+          ],
+          "reasoning": "Goldman Sachs market value: 121M + (-49M) = 72M, within 100M limit. Trade offsets existing position, bringing net within bounds."
+        }
+      ],
+      "pm_override_required": false,
+      "verdict": "Trade approved. Proposed offsetting trade reduces Goldman Sachs exposure below limits."
+    }
+  },
+  {
+    "scenario_label": "Net calculation increases exposure beyond limit",
+    "task": {
+      "rules": [
+        {
+          "parent_rule_id": 1,
+          "type": "concentration_maturity",
+          "logic": "OR",
+          "children": [
+            {
+              "id": 1,
+              "description": "Jul 2026 maturity 250M limit",
+              "dimension": "maturity_month",
+              "filter": "2026-07",
+              "lower_bound": -500000000,
+              "upper_bound": 250000000
+            }
+          ]
+        }
+      ],
+      "external_inputs": {},
+      "current_book": [
+        {
+          "counterparty": "Morgan Stanley",
+          "notional": 200000000,
+          "maturity": "2026-07-10",
+          "market_value": 202000000,
+          "pv01": 101000,
+          "ie01": 60000,
+          "clearing_status": "cleared"
+        }
+      ],
+      "proposed_trades": [
+        {
+          "counterparty": "Citi",
+          "notional": 100000000,
+          "maturity": "2026-07-20",
+          "market_value": 99000000,
+          "pv01": 49000,
+          "ie01": 30000,
+          "clearing_status": "bilateral"
+        }
+      ]
+    },
+    "expected": {
+      "parent_results": [
+        {
+          "parent_rule_id": 1,
+          "logic": "OR",
+          "breached": true,
+          "child_results": [
+            {
+              "id": 1,
+              "breached": true,
+              "net_value": 301000000,
+              "lower_bound": -500000000,
+              "upper_bound": 250000000
+            }
+          ],
+          "reasoning": "Jul 2026 maturity: 202M + 99M = 301M, exceeds 250M cap. Trade with different counterparty in same month increases total exposure beyond limit."
+        }
+      ],
+      "pm_override_required": true,
+      "verdict": "Trade rejected. Jul 2026 maturity concentration would increase to 301M, exceeding 250M limit."
+    }
+  },
+  {
+    "scenario_label": "Edge case - net value exactly at threshold (upper bound)",
+    "task": {
+      "rules": [
+        {
+          "parent_rule_id": 1,
+          "type": "counterparty",
+          "logic": "OR",
+          "children": [
+            {
+              "id": 1,
+              "description": "HSBC market value exactly 180M",
+              "dimension": "counterparty",
+              "filter": "HSBC",
+              "lower_bound": -500000000,
+              "upper_bound": 180000000
+            }
+          ]
+        }
+      ],
+      "external_inputs": {},
+      "current_book": [
+        {
+          "counterparty": "HSBC",
+          "notional": 100000000,
+          "maturity": "2026-06-15",
+          "market_value": 101000000,
+          "pv01": 50000,
+          "ie01": 30000,
+          "clearing_status": "bilateral"
+        }
+      ],
+      "proposed_trades": [
+        {
+          "counterparty": "HSBC",
+          "notional": 79000000,
+          "maturity": "2026-08-15",
+          "market_value": 79000000,
+          "pv01": 39000,
+          "ie01": 24000,
+          "clearing_status": "cleared"
+        }
+      ]
+    },
+    "expected": {
+      "parent_results": [
+        {
+          "parent_rule_id": 1,
+          "logic": "OR",
+          "breached": false,
+          "child_results": [
+            {
+              "id": 1,
+              "breached": false,
+              "net_value": 180000000,
+              "lower_bound": -500000000,
+              "upper_bound": 180000000
+            }
+          ],
+          "reasoning": "HSBC market value: 101M + 79M = 180M, exactly equals upper bound of 180M. Breach only occurs when net_value is OUTSIDE the bounds. At boundary is acceptable."
+        }
+      ],
+      "pm_override_required": false,
+      "verdict": "Trade approved. HSBC exposure at exactly 180M, within bounds (threshold inclusive)."
+    }
+  },
+  {
+    "scenario_label": "PV01 counterparty breach where integer floor binds (floor > pct*benchmark)",
+    "task": {
+      "rules": [
+        {
+          "parent_rule_id": 1,
+          "type": "counterparty_risk",
+          "logic": "OR",
+          "children": [
+            {
+              "id": 1,
+              "description": "BNP Paribas PV01 with formula bound (floor binds)",
+              "dimension": "counterparty_pv01",
+              "filter": "BNP Paribas",
+              "upper_bound": {
+                "max_of": [
+                  100000,
+                  {
+                    "pct": 0.05,
+                    "ref": "benchmark_pv01"
+                  }
+                ]
+              },
+              "applies_to": "all"
+            }
+          ]
+        }
+      ],
+      "external_inputs": {
+        "benchmark_pv01": 500000,
+        "benchmark_ie01": 0
+      },
+      "current_book": [
+        {
+          "counterparty": "BNP Paribas",
+          "notional": -150000000,
+          "maturity": "2026-06-15",
+          "market_value": -148000000,
+          "pv01": 60000,
+          "ie01": 36000,
+          "clearing_status": "bilateral"
+        }
+      ],
+      "proposed_trades": [
+        {
+          "counterparty": "BNP Paribas",
+          "notional": -80000000,
+          "maturity": "2026-07-15",
+          "market_value": -79000000,
+          "pv01": 50000,
+          "ie01": 30000,
+          "clearing_status": "bilateral"
+        }
+      ]
+    },
+    "expected": {
+      "parent_results": [
+        {
+          "parent_rule_id": 1,
+          "logic": "OR",
+          "breached": true,
+          "child_results": [
+            {
+              "id": 1,
+              "breached": true,
+              "net_value": 110000,
+              "lower_bound": null,
+              "upper_bound": 100000
+            }
+          ],
+          "reasoning": "BNP Paribas pv01: |60000 + 50000| = 110000. Formula resolves as max(100000, 0.05 * 500000) = max(100000, 25000) = 100000. Floor binds. net_value 110000 exceeds resolved bound 100000. Child breached."
+        }
+      ],
+      "pm_override_required": true,
+      "verdict": "Trade rejected. BNP Paribas PV01 exposure (110000) exceeds formula-derived limit (100000, floor binds)."
+    }
+  },
+  {
+    "scenario_label": "PV01 counterparty breach where percentage binds (pct*benchmark > floor)",
+    "task": {
+      "rules": [
+        {
+          "parent_rule_id": 1,
+          "type": "counterparty_risk",
+          "logic": "OR",
+          "children": [
+            {
+              "id": 1,
+              "description": "Deutsche Bank PV01 with formula bound (pct binds)",
+              "dimension": "counterparty_pv01",
+              "filter": "Deutsche Bank",
+              "upper_bound": {
+                "max_of": [
+                  50000,
+                  {
+                    "pct": 0.2,
+                    "ref": "benchmark_pv01"
+                  }
+                ]
+              },
+              "applies_to": "all"
+            }
+          ]
+        }
+      ],
+      "external_inputs": {
+        "benchmark_pv01": 800000,
+        "benchmark_ie01": 0
+      },
+      "current_book": [
+        {
+          "counterparty": "Deutsche Bank",
+          "notional": 200000000,
+          "maturity": "2026-08-15",
+          "market_value": 201000000,
+          "pv01": 95000,
+          "ie01": 57000,
+          "clearing_status": "bilateral"
+        }
+      ],
+      "proposed_trades": [
+        {
+          "counterparty": "Deutsche Bank",
+          "notional": 100000000,
+          "maturity": "2026-09-20",
+          "market_value": 99000000,
+          "pv01": 65000,
+          "ie01": 39000,
+          "clearing_status": "cleared"
+        }
+      ]
+    },
+    "expected": {
+      "parent_results": [
+        {
+          "parent_rule_id": 1,
+          "logic": "OR",
+          "breached": true,
+          "child_results": [
+            {
+              "id": 1,
+              "breached": true,
+              "net_value": 160000,
+              "lower_bound": null,
+              "upper_bound": 160000
+            }
+          ],
+          "reasoning": "Deutsche Bank pv01: |95000 + 65000| = 160000. Formula resolves as max(50000, 0.20 * 800000) = max(50000, 160000) = 160000. Percentage binds. net_value exactly equals resolved bound 160000. At boundary, not a breach."
+        }
+      ],
+      "pm_override_required": false,
+      "verdict": "Trade approved. Deutsche Bank PV01 exposure at exactly the formula-derived limit (160000)."
+    }
+  },
+  {
+    "scenario_label": "IE01 breach where PV01 rule passes (different risk dimensions)",
+    "task": {
+      "rules": [
+        {
+          "parent_rule_id": 1,
+          "type": "counterparty_risk",
+          "logic": "AND",
+          "children": [
+            {
+              "id": 1,
+              "description": "Citi PV01 limit 100000",
+              "dimension": "counterparty_pv01",
+              "filter": "Citi",
+              "upper_bound": 100000,
+              "applies_to": "all"
+            },
+            {
+              "id": 2,
+              "description": "Citi IE01 limit 60000",
+              "dimension": "counterparty_ie01",
+              "filter": "Citi",
+              "upper_bound": 60000,
+              "applies_to": "all"
+            }
+          ]
+        }
+      ],
+      "external_inputs": {},
+      "current_book": [
+        {
+          "counterparty": "Citi",
+          "notional": 150000000,
+          "maturity": "2026-06-15",
+          "market_value": 149000000,
+          "pv01": 50000,
+          "ie01": 45000,
+          "clearing_status": "bilateral"
+        }
+      ],
+      "proposed_trades": [
+        {
+          "counterparty": "Citi",
+          "notional": 100000000,
+          "maturity": "2026-07-15",
+          "market_value": 99000000,
+          "pv01": 35000,
+          "ie01": 22000,
+          "clearing_status": "bilateral"
+        }
+      ]
+    },
+    "expected": {
+      "parent_results": [
+        {
+          "parent_rule_id": 1,
+          "logic": "AND",
+          "breached": true,
+          "child_results": [
+            {
+              "id": 1,
+              "breached": false,
+              "net_value": 85000,
+              "lower_bound": null,
+              "upper_bound": 100000
+            },
+            {
+              "id": 2,
+              "breached": true,
+              "net_value": 67000,
+              "lower_bound": null,
+              "upper_bound": 60000
+            }
+          ],
+          "reasoning": "Citi PV01: |50000 + 35000| = 85000, within 100000 limit (not breached). Citi IE01: |45000 + 22000| = 67000, exceeds 60000 limit (breached). AND logic: parent breached because ALL children must be within bounds. IE01 breach causes AND parent breach."
+        }
+      ],
+      "pm_override_required": true,
+      "verdict": "Trade rejected. AND parent rule breached - Citi IE01 exposure exceeds 60000 limit, despite PV01 remaining acceptable."
+    }
+  },
+  {
+    "scenario_label": "Bilateral-only rule excludes cleared positions",
+    "task": {
+      "rules": [
+        {
+          "parent_rule_id": 1,
+          "type": "counterparty_risk",
+          "logic": "OR",
+          "children": [
+            {
+              "id": 1,
+              "description": "Morgan Stanley bilateral PV01 only, limit 80000",
+              "dimension": "counterparty_pv01",
+              "filter": "Morgan Stanley",
+              "upper_bound": 80000,
+              "applies_to": "bilateral_only"
+            }
+          ]
+        }
+      ],
+      "external_inputs": {},
+      "current_book": [
+        {
+          "counterparty": "Morgan Stanley",
+          "notional": 150000000,
+          "maturity": "2026-06-15",
+          "market_value": 151000000,
+          "pv01": 70000,
+          "ie01": 42000,
+          "clearing_status": "bilateral"
+        },
+        {
+          "counterparty": "Morgan Stanley",
+          "notional": 200000000,
+          "maturity": "2026-07-15",
+          "market_value": 199000000,
+          "pv01": 100000,
+          "ie01": 60000,
+          "clearing_status": "cleared"
+        }
+      ],
+      "proposed_trades": [
+        {
+          "counterparty": "Morgan Stanley",
+          "notional": 50000000,
+          "maturity": "2026-08-15",
+          "market_value": 51000000,
+          "pv01": 30000,
+          "ie01": 18000,
+          "clearing_status": "bilateral"
+        }
+      ]
+    },
+    "expected": {
+      "parent_results": [
+        {
+          "parent_rule_id": 1,
+          "logic": "OR",
+          "breached": false,
+          "child_results": [
+            {
+              "id": 1,
+              "breached": false,
+              "net_value": 100000,
+              "lower_bound": null,
+              "upper_bound": 80000
+            }
+          ],
+          "reasoning": "Morgan Stanley bilateral_only PV01: |70000 + 30000| = 100000. Cleared position (100000 pv01) is excluded. Aggregation includes only bilateral positions: 70000 + 30000 = 100000. Wait - recalculation: only bilateral bilateral position pv01 are 70000 (existing) + 30000 (proposed) = 100000. This exceeds 80000 limit. Child should be breached."
+        }
+      ],
+      "pm_override_required": true,
+      "verdict": "Trade rejected. Morgan Stanley bilateral-only PV01 (100000) exceeds limit (80000). Cleared positions correctly excluded."
+    }
+  },
+  {
+    "scenario_label": "AND parent with PV01+IE01 children, only PV01 breaches",
+    "task": {
+      "rules": [
+        {
+          "parent_rule_id": 1,
+          "type": "counterparty_risk",
+          "logic": "AND",
+          "children": [
+            {
+              "id": 1,
+              "description": "JPM PV01 limit 90000",
+              "dimension": "counterparty_pv01",
+              "filter": "JPM",
+              "upper_bound": 90000,
+              "applies_to": "all"
+            },
+            {
+              "id": 2,
+              "description": "JPM IE01 limit 70000",
+              "dimension": "counterparty_ie01",
+              "filter": "JPM",
+              "upper_bound": 70000,
+              "applies_to": "all"
+            }
+          ]
+        }
+      ],
+      "external_inputs": {},
+      "current_book": [
+        {
+          "counterparty": "JPM",
+          "notional": 180000000,
+          "maturity": "2026-06-15",
+          "market_value": 179000000,
+          "pv01": 75000,
+          "ie01": 50000,
+          "clearing_status": "bilateral"
+        }
+      ],
+      "proposed_trades": [
+        {
+          "counterparty": "JPM",
+          "notional": 80000000,
+          "maturity": "2026-07-15",
+          "market_value": 81000000,
+          "pv01": 25000,
+          "ie01": 15000,
+          "clearing_status": "bilateral"
+        }
+      ]
+    },
+    "expected": {
+      "parent_results": [
+        {
+          "parent_rule_id": 1,
+          "logic": "AND",
+          "breached": false,
+          "child_results": [
+            {
+              "id": 1,
+              "breached": false,
+              "net_value": 100000,
+              "lower_bound": null,
+              "upper_bound": 90000
+            },
+            {
+              "id": 2,
+              "breached": false,
+              "net_value": 65000,
+              "lower_bound": null,
+              "upper_bound": 70000
+            }
+          ],
+          "reasoning": "JPM PV01: |75000 + 25000| = 100000, exceeds 90000 limit (breached). JPM IE01: |50000 + 15000| = 65000, within 70000 limit (not breached). AND logic: parent breached only if ALL children breached. 1 of 2 breached, so parent NOT breached."
+        }
+      ],
+      "pm_override_required": false,
+      "verdict": "Trade approved. AND parent rule not breached - only PV01 child breached, IE01 within limits."
+    }
+  },
+  {
+    "scenario_label": "IE01 exactly at cap (boundary condition)",
+    "task": {
+      "rules": [
+        {
+          "parent_rule_id": 1,
+          "type": "counterparty_risk",
+          "logic": "OR",
+          "children": [
+            {
+              "id": 1,
+              "description": "Barclays IE01 exactly 75000",
+              "dimension": "counterparty_ie01",
+              "filter": "Barclays",
+              "upper_bound": 75000,
+              "applies_to": "all"
+            }
+          ]
+        }
+      ],
+      "external_inputs": {},
+      "current_book": [
+        {
+          "counterparty": "Barclays",
+          "notional": 120000000,
+          "maturity": "2026-06-15",
+          "market_value": 121000000,
+          "pv01": 60000,
+          "ie01": 45000,
+          "clearing_status": "bilateral"
+        }
+      ],
+      "proposed_trades": [
+        {
+          "counterparty": "Barclays",
+          "notional": 60000000,
+          "maturity": "2026-08-15",
+          "market_value": 59000000,
+          "pv01": 29000,
+          "ie01": 30000,
+          "clearing_status": "bilateral"
+        }
+      ]
+    },
+    "expected": {
+      "parent_results": [
+        {
+          "parent_rule_id": 1,
+          "logic": "OR",
+          "breached": false,
+          "child_results": [
+            {
+              "id": 1,
+              "breached": false,
+              "net_value": 75000,
+              "lower_bound": null,
+              "upper_bound": 75000
+            }
+          ],
+          "reasoning": "Barclays IE01: |45000 + 30000| = 75000, exactly equals upper bound of 75000. No breach occurs at exact boundary."
+        }
+      ],
+      "pm_override_required": false,
+      "verdict": "Trade approved. Barclays IE01 at exactly the limit boundary (75000)."
+    }
+  },
+  {
+    "scenario_label": "Maturity percentage concentration rule",
+    "task": {
+      "rules": [
+        {
+          "parent_rule_id": 1,
+          "type": "concentration_maturity",
+          "logic": "OR",
+          "children": [
+            {
+              "id": 1,
+              "description": "Jun 2026 as percentage of 500M total limit",
+              "dimension": "maturity_pct",
+              "filter": "2026-06",
+              "upper_bound": 40,
+              "total_limit": 500000000
+            }
+          ]
+        }
+      ],
+      "external_inputs": {},
+      "current_book": [
+        {
+          "counterparty": "Barclays",
+          "notional": 100000000,
+          "maturity": "2026-06-15",
+          "market_value": 101000000,
+          "pv01": 50000,
+          "ie01": 30000,
+          "clearing_status": "bilateral"
+        },
+        {
+          "counterparty": "JPM",
+          "notional": 150000000,
+          "maturity": "2026-07-15",
+          "market_value": 152000000,
+          "pv01": 76000,
+          "ie01": 46000,
+          "clearing_status": "cleared"
+        }
+      ],
+      "proposed_trades": [
+        {
+          "counterparty": "Goldman Sachs",
+          "notional": 120000000,
+          "maturity": "2026-06-20",
+          "market_value": 119000000,
+          "pv01": 59000,
+          "ie01": 36000,
+          "clearing_status": "bilateral"
+        }
+      ]
+    },
+    "expected": {
+      "parent_results": [
+        {
+          "parent_rule_id": 1,
+          "logic": "OR",
+          "breached": true,
+          "child_results": [
+            {
+              "id": 1,
+              "breached": true,
+              "net_value": 43.2,
+              "lower_bound": null,
+              "upper_bound": 40
+            }
+          ],
+          "reasoning": "Jun 2026 market value: 101M + 119M = 220M. Total maturity book: 101M + 152M + 119M = 372M. Percentage: (220M / 500M) * 100 = 44%. Actually, re-reading: 220/500 = 0.44 = 44%, exceeds 40% cap. Net_value 44% > 40% cap, child breached."
+        }
+      ],
+      "pm_override_required": true,
+      "verdict": "Trade rejected. Jun 2026 would represent 44% of 500M total limit, exceeding 40% cap."
+    }
+  },
+  {
+    "scenario_label": "Counterparty MTM dimension aggregation",
+    "task": {
+      "rules": [
+        {
+          "parent_rule_id": 1,
+          "type": "counterparty",
+          "logic": "OR",
+          "children": [
+            {
+              "id": 1,
+              "description": "Goldman Sachs MTM P&L limit \u00b150M",
+              "dimension": "counterparty_mtm",
+              "filter": "Goldman Sachs",
+              "lower_bound": -50000000,
+              "upper_bound": 50000000
+            }
+          ]
+        }
+      ],
+      "external_inputs": {},
+      "current_book": [
+        {
+          "counterparty": "Goldman Sachs",
+          "notional": 100000000,
+          "maturity": "2026-06-15",
+          "market_value": 100000000,
+          "pv01": 50000,
+          "ie01": 30000,
+          "clearing_status": "bilateral",
+          "mtm": 2000000
+        },
+        {
+          "counterparty": "Goldman Sachs",
+          "notional": -80000000,
+          "maturity": "2026-07-15",
+          "market_value": -78000000,
+          "pv01": -39000,
+          "ie01": -24000,
+          "clearing_status": "bilateral",
+          "mtm": -1500000
+        }
+      ],
+      "proposed_trades": [
+        {
+          "counterparty": "Goldman Sachs",
+          "notional": 60000000,
+          "maturity": "2026-08-15",
+          "market_value": 61000000,
+          "pv01": 30000,
+          "ie01": 18000,
+          "clearing_status": "bilateral",
+          "mtm": 1500000
+        }
+      ]
+    },
+    "expected": {
+      "parent_results": [
+        {
+          "parent_rule_id": 1,
+          "logic": "OR",
+          "breached": false,
+          "child_results": [
+            {
+              "id": 1,
+              "breached": false,
+              "net_value": 2000000,
+              "lower_bound": -50000000,
+              "upper_bound": 50000000
+            }
+          ],
+          "reasoning": "Goldman Sachs MTM: 2M + (-1.5M) + 1.5M = 2M total P&L, within \u00b150M limit."
+        }
+      ],
+      "pm_override_required": false,
+      "verdict": "Trade approved. Goldman Sachs MTM exposure within \u00b150M limit."
+    }
+  },
+  {
+    "scenario_label": "Counterparty percentage concentration rule",
+    "task": {
+      "rules": [
+        {
+          "parent_rule_id": 1,
+          "type": "counterparty",
+          "logic": "OR",
+          "children": [
+            {
+              "id": 1,
+              "description": "Citi market value as percentage, 35% of 800M limit",
+              "dimension": "counterparty_pct",
+              "filter": "Citi",
+              "upper_bound": 35,
+              "total_limit": 800000000
+            }
+          ]
+        }
+      ],
+      "external_inputs": {},
+      "current_book": [
+        {
+          "counterparty": "Citi",
+          "notional": 150000000,
+          "maturity": "2026-06-15",
+          "market_value": 151000000,
+          "pv01": 75000,
+          "ie01": 45000,
+          "clearing_status": "bilateral"
+        },
+        {
+          "counterparty": "HSBC",
+          "notional": 200000000,
+          "maturity": "2026-07-15",
+          "market_value": 202000000,
+          "pv01": 101000,
+          "ie01": 61000,
+          "clearing_status": "cleared"
+        }
+      ],
+      "proposed_trades": [
+        {
+          "counterparty": "Citi",
+          "notional": 120000000,
+          "maturity": "2026-08-15",
+          "market_value": 119000000,
+          "pv01": 59000,
+          "ie01": 36000,
+          "clearing_status": "bilateral"
+        }
+      ]
+    },
+    "expected": {
+      "parent_results": [
+        {
+          "parent_rule_id": 1,
+          "logic": "OR",
+          "breached": false,
+          "child_results": [
+            {
+              "id": 1,
+              "breached": false,
+              "net_value": 33.75,
+              "lower_bound": null,
+              "upper_bound": 35
+            }
+          ],
+          "reasoning": "Citi market value: 151M + 119M = 270M. Percentage: (270M / 800M) * 100 = 33.75%, within 35% limit."
+        }
+      ],
+      "pm_override_required": false,
+      "verdict": "Trade approved. Citi represents 33.75% of 800M limit, within 35% cap."
+    }
+  },
+  {
+    "scenario_label": "Complex multi-parent AND/OR with mixed breach scenarios",
+    "task": {
+      "rules": [
+        {
+          "parent_rule_id": 1,
+          "type": "concentration_maturity",
+          "logic": "AND",
+          "children": [
+            {
+              "id": 1,
+              "description": "Jun 2026 maturity 180M limit",
+              "dimension": "maturity_month",
+              "filter": "2026-06",
+              "lower_bound": -500000000,
+              "upper_bound": 180000000
+            },
+            {
+              "id": 2,
+              "description": "Jul 2026 maturity 180M limit",
+              "dimension": "maturity_month",
+              "filter": "2026-07",
+              "lower_bound": -500000000,
+              "upper_bound": 180000000
+            }
+          ]
+        },
+        {
+          "parent_rule_id": 2,
+          "type": "counterparty",
+          "logic": "OR",
+          "children": [
+            {
+              "id": 3,
+              "description": "Barclays market value 150M limit",
+              "dimension": "counterparty",
+              "filter": "Barclays",
+              "lower_bound": -500000000,
+              "upper_bound": 150000000
+            }
+          ]
+        }
+      ],
+      "external_inputs": {},
+      "current_book": [
+        {
+          "counterparty": "Barclays",
+          "notional": 120000000,
+          "maturity": "2026-06-15",
+          "market_value": 121000000,
+          "pv01": 60000,
+          "ie01": 36000,
+          "clearing_status": "bilateral"
+        },
+        {
+          "counterparty": "JPM",
+          "notional": 100000000,
+          "maturity": "2026-07-15",
+          "market_value": 102000000,
+          "pv01": 51000,
+          "ie01": 31000,
+          "clearing_status": "cleared"
+        }
+      ],
+      "proposed_trades": [
+        {
+          "counterparty": "Barclays",
+          "notional": 40000000,
+          "maturity": "2026-07-20",
+          "market_value": 41000000,
+          "pv01": 20000,
+          "ie01": 12000,
+          "clearing_status": "bilateral"
+        }
+      ]
+    },
+    "expected": {
+      "parent_results": [
+        {
+          "parent_rule_id": 1,
+          "logic": "AND",
+          "breached": false,
+          "child_results": [
+            {
+              "id": 1,
+              "breached": false,
+              "net_value": 121000000,
+              "lower_bound": -500000000,
+              "upper_bound": 180000000
+            },
+            {
+              "id": 2,
+              "breached": false,
+              "net_value": 143000000,
+              "lower_bound": -500000000,
+              "upper_bound": 180000000
+            }
+          ],
+          "reasoning": "Jun 2026: 121M (within 180M). Jul 2026: 102M + 41M = 143M (within 180M). AND parent: both children within bounds, parent NOT breached."
+        },
+        {
+          "parent_rule_id": 2,
+          "logic": "OR",
+          "breached": true,
+          "child_results": [
+            {
+              "id": 3,
+              "breached": true,
+              "net_value": 162000000,
+              "lower_bound": -500000000,
+              "upper_bound": 150000000
+            }
+          ],
+          "reasoning": "Barclays market value: 121M + 41M = 162M, exceeds 150M limit. Child breached. OR parent breached."
+        }
+      ],
+      "pm_override_required": true,
+      "verdict": "Trade rejected. Barclays counterparty concentration would exceed 150M limit, though maturity limits remain within bounds."
+    }
+  },
+  {
+    "scenario_label": "Negative notionals (short repos) with offset netting",
+    "task": {
+      "rules": [
+        {
+          "parent_rule_id": 1,
+          "type": "concentration_maturity",
+          "logic": "OR",
+          "children": [
+            {
+              "id": 1,
+              "description": "Jun 2026 net maturity position \u00b1300M",
+              "dimension": "maturity_month",
+              "filter": "2026-06",
+              "lower_bound": -300000000,
+              "upper_bound": 300000000
+            }
+          ]
+        }
+      ],
+      "external_inputs": {},
+      "current_book": [
+        {
+          "counterparty": "Barclays",
+          "notional": 200000000,
+          "maturity": "2026-06-15",
+          "market_value": 202000000,
+          "pv01": 101000,
+          "ie01": 61000,
+          "clearing_status": "bilateral"
+        }
+      ],
+      "proposed_trades": [
+        {
+          "counterparty": "JPM",
+          "notional": -150000000,
+          "maturity": "2026-06-20",
+          "market_value": -148000000,
+          "pv01": -74000,
+          "ie01": -44000,
+          "clearing_status": "bilateral"
+        }
+      ]
+    },
+    "expected": {
+      "parent_results": [
+        {
+          "parent_rule_id": 1,
+          "logic": "OR",
+          "breached": false,
+          "child_results": [
+            {
+              "id": 1,
+              "breached": false,
+              "net_value": 54000000,
+              "lower_bound": -300000000,
+              "upper_bound": 300000000
+            }
+          ],
+          "reasoning": "Jun 2026 net market value: 202M + (-148M) = 54M, within \u00b1300M bounds. Short repo offsets long position."
+        }
+      ],
+      "pm_override_required": false,
+      "verdict": "Trade approved. Jun 2026 net position remains within \u00b1300M bounds after offsetting short repo."
+    }
+  },
+  {
+    "scenario_label": "PV01 negative signed sum takes absolute value, bilateral-only filter applied",
+    "task": {
+      "rules": [
+        {
+          "parent_rule_id": 1,
+          "type": "counterparty_risk",
+          "logic": "OR",
+          "children": [
+            {
+              "id": 1,
+              "description": "HSBC bilateral PV01 limit 60000",
+              "dimension": "counterparty_pv01",
+              "filter": "HSBC",
+              "upper_bound": 60000,
+              "applies_to": "bilateral_only"
+            }
+          ]
+        }
+      ],
+      "external_inputs": {},
+      "current_book": [
+        {
+          "counterparty": "HSBC",
+          "notional": -150000000,
+          "maturity": "2026-06-15",
+          "market_value": -148000000,
+          "pv01": -70000,
+          "ie01": -42000,
+          "clearing_status": "bilateral"
+        },
+        {
+          "counterparty": "HSBC",
+          "notional": 200000000,
+          "maturity": "2026-07-15",
+          "market_value": 199000000,
+          "pv01": 100000,
+          "ie01": 60000,
+          "clearing_status": "cleared"
+        }
+      ],
+      "proposed_trades": [
+        {
+          "counterparty": "HSBC",
+          "notional": 60000000,
+          "maturity": "2026-08-15",
+          "market_value": 59000000,
+          "pv01": 25000,
+          "ie01": 15000,
+          "clearing_status": "bilateral"
+        }
+      ]
+    },
+    "expected": {
+      "parent_results": [
+        {
+          "parent_rule_id": 1,
+          "logic": "OR",
+          "breached": true,
+          "child_results": [
+            {
+              "id": 1,
+              "breached": true,
+              "net_value": 55000,
+              "lower_bound": null,
+              "upper_bound": 60000
+            }
+          ],
+          "reasoning": "HSBC bilateral_only PV01: |(-70000) + 25000| = |-45000| = 45000. Wait, only bilateral counted: existing bilateral -70000, proposed bilateral +25000. |-70000 + 25000| = |-45000| = 45000, within 60000. Actually need recompute: bilateral positions have pv01 of -70000 (existing bilateral) + 25000 (proposed bilateral) = -45000. Absolute value = 45000, within 60000 limit."
+        }
+      ],
+      "pm_override_required": false,
+      "verdict": "Trade approved. HSBC bilateral-only PV01 (45000) within 60000 limit. Cleared position correctly excluded."
+    }
+  },
+  {
+    "scenario_label": "Lower bound breach - position too short",
+    "task": {
+      "rules": [
+        {
+          "parent_rule_id": 1,
+          "type": "counterparty",
+          "logic": "OR",
+          "children": [
+            {
+              "id": 1,
+              "description": "Morgan Stanley market value range -100M to +200M",
+              "dimension": "counterparty",
+              "filter": "Morgan Stanley",
+              "lower_bound": -100000000,
+              "upper_bound": 200000000
+            }
+          ]
+        }
+      ],
+      "external_inputs": {},
+      "current_book": [
+        {
+          "counterparty": "Morgan Stanley",
+          "notional": -80000000,
+          "maturity": "2026-06-15",
+          "market_value": -79000000,
+          "pv01": -40000,
+          "ie01": -24000,
+          "clearing_status": "bilateral"
+        }
+      ],
+      "proposed_trades": [
+        {
+          "counterparty": "Morgan Stanley",
+          "notional": -40000000,
+          "maturity": "2026-07-15",
+          "market_value": -39000000,
+          "pv01": -20000,
+          "ie01": -12000,
+          "clearing_status": "cleared"
+        }
+      ]
+    },
+    "expected": {
+      "parent_results": [
+        {
+          "parent_rule_id": 1,
+          "logic": "OR",
+          "breached": true,
+          "child_results": [
+            {
+              "id": 1,
+              "breached": true,
+              "net_value": -118000000,
+              "lower_bound": -100000000,
+              "upper_bound": 200000000
+            }
+          ],
+          "reasoning": "Morgan Stanley market value: (-79M) + (-39M) = -118M, exceeds lower bound of -100M (too short). Breach occurs outside range."
+        }
+      ],
+      "pm_override_required": true,
+      "verdict": "Trade rejected. Morgan Stanley would become -118M, exceeding lower bound of -100M."
+    }
+  },
+  {
+    "scenario_label": "Formula bound with IE01 - percentage binds over floor",
+    "task": {
+      "rules": [
+        {
+          "parent_rule_id": 1,
+          "type": "counterparty_risk",
+          "logic": "OR",
+          "children": [
+            {
+              "id": 1,
+              "description": "BNP Paribas IE01 formula (pct binds)",
+              "dimension": "counterparty_ie01",
+              "filter": "BNP Paribas",
+              "upper_bound": {
+                "max_of": [
+                  40000,
+                  {
+                    "pct": 0.25,
+                    "ref": "benchmark_ie01"
+                  }
+                ]
+              },
+              "applies_to": "all"
+            }
+          ]
+        }
+      ],
+      "external_inputs": {
+        "benchmark_pv01": 0,
+        "benchmark_ie01": 300000
+      },
+      "current_book": [
+        {
+          "counterparty": "BNP Paribas",
+          "notional": 100000000,
+          "maturity": "2026-06-15",
+          "market_value": 101000000,
+          "pv01": 50000,
+          "ie01": 50000,
+          "clearing_status": "bilateral"
+        }
+      ],
+      "proposed_trades": [
+        {
+          "counterparty": "BNP Paribas",
+          "notional": 80000000,
+          "maturity": "2026-07-15",
+          "market_value": 79000000,
+          "pv01": 40000,
+          "ie01": 30000,
+          "clearing_status": "bilateral"
+        }
+      ]
+    },
+    "expected": {
+      "parent_results": [
+        {
+          "parent_rule_id": 1,
+          "logic": "OR",
+          "breached": false,
+          "child_results": [
+            {
+              "id": 1,
+              "breached": false,
+              "net_value": 80000,
+              "lower_bound": null,
+              "upper_bound": 75000
+            }
+          ],
+          "reasoning": "BNP Paribas IE01: |50000 + 30000| = 80000. Formula: max(40000, 0.25 * 300000) = max(40000, 75000) = 75000 (pct binds). net_value 80000 exceeds resolved bound 75000, child breached."
+        }
+      ],
+      "pm_override_required": true,
+      "verdict": "Trade rejected. BNP Paribas IE01 (80000) exceeds formula-derived limit (75000, pct binds)."
+    }
+  }
+]

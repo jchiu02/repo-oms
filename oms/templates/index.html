@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Repo OMS — Portfolio Viewer</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+  <link rel="stylesheet" href="/static/css/styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+</head>
+<body>
+  <header>
+    <h1>Repo OMS</h1>
+    <div class="controls">
+      <span class="business-date-label">Business Date</span>
+      <span id="business-date" class="business-date-value"></span>
+      <button id="sent-trades-btn" class="sent-trades-toggle-btn">Sent Trades <span id="sent-trades-badge" class="sent-badge">0</span></button>
+      <button id="reset-btn" class="reset-btn" title="Clear all sent trades">&#x21ba; Reset</button>
+      <div class="controls-divider"></div>
+      <label for="portfolio-select">Portfolio</label>
+      <select id="portfolio-select">
+        <option value="">Select a portfolio…</option>
+      </select>
+    </div>
+  </header>
+
+  <main>
+    <div id="empty-state" class="empty-state">Select a portfolio to view holdings</div>
+
+    <div id="holdings-panel" class="hidden">
+      <div class="panel-header">
+        <h2 class="panel-title">Holdings</h2>
+        <select id="display-toggle" class="display-toggle">
+          <option value="market_value">Market Value</option>
+          <option value="notional">Notional</option>
+        </select>
+        <button id="refresh-btn" class="refresh-btn" title="Refresh prices">&#x21bb; Refresh Prices</button>
+        <span id="last-refreshed" class="last-refreshed"></span>
+      </div>
+      <table id="positions-table">
+        <thead>
+          <tr>
+            <th class="col-bond">Bond</th>
+            <th class="col-bond-type">Type</th>
+            <th class="col-isin">ISIN</th>
+            <th class="col-type">Type</th>
+            <th class="col-cpty">Counterparty</th>
+            <th class="col-tn">T+0</th>
+            <th class="col-tn">T+1</th>
+            <th class="col-tn">T+2</th>
+            <th class="col-tn">T+3</th>
+            <th class="col-tn">T+4</th>
+            <th class="col-tn">T+5</th>
+          </tr>
+        </thead>
+        <tbody id="positions-body"></tbody>
+      </table>
+    </div>
+
+    <div id="trades-panel" class="hidden">
+      <div class="panel-header">
+        <h2 class="panel-title">Proposed Trades</h2>
+        <span id="trades-count" class="trades-count">0 trades</span>
+        <span id="short-sell-warning" class="short-sell-warning hidden">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          Short Sell
+        </span>
+        <button id="run-compliance-btn" class="run-compliance-btn">Run Compliance Checks</button>
+      </div>
+      <table id="trades-table">
+        <thead>
+          <tr>
+            <th class="col-trade-bond">Bond</th>
+            <th class="col-trade-type">Type</th>
+            <th class="col-trade-notional">Notional</th>
+            <th class="col-trade-mv">Market Value</th>
+            <th class="col-trade-sdate">Settlement Date</th>
+            <th class="col-trade-mdate">Maturity Date</th>
+            <th class="col-trade-reason">Reason</th>
+            <th class="col-trade-remove"></th>
+          </tr>
+        </thead>
+        <tbody id="trades-body"></tbody>
+      </table>
+    </div>
+
+  </main>
+
+  <div id="drawer-backdrop" class="drawer-backdrop hidden"></div>
+  <div id="sent-trades-drawer" class="sent-trades-drawer">
+    <div class="drawer-header">
+      <h2 class="drawer-title">Sent Trades</h2>
+      <span id="sent-trades-count" class="trades-count">0 trades</span>
+      <button id="close-drawer-btn" class="drawer-close" title="Close">&times;</button>
+    </div>
+    <div class="drawer-body">
+      <table id="sent-trades-table">
+        <thead>
+          <tr>
+            <th>Bond</th>
+            <th>Counterparty</th>
+            <th>Notional</th>
+            <th>MV</th>
+            <th>Rate</th>
+            <th>Settlement</th>
+            <th>Maturity</th>
+            <th>Status</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="sent-trades-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div id="compliance-overlay" class="modal-overlay hidden">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>Compliance Results</h2>
+        <span id="compliance-verdict" class="compliance-verdict"></span>
+        <span id="compliance-countdown" class="compliance-countdown"></span>
+        <button id="close-compliance" class="modal-close" title="Close">&times;</button>
+      </div>
+      <div id="compliance-stale-banner" class="compliance-stale-banner hidden">
+        Results expired. Please re-run compliance checks.
+      </div>
+      <div class="compliance-filter">
+        <button class="filter-btn active" data-filter="all">All</button>
+        <button class="filter-btn" data-filter="failed">Failed</button>
+        <button class="filter-btn" data-filter="passed">Passed</button>
+      </div>
+      <div class="modal-body">
+        <div class="compliance-section">
+          <h3 class="compliance-section-title">Concentration Maturity</h3>
+          <table class="compliance-table">
+            <thead>
+              <tr>
+                <th class="col-rule-id">Rule ID</th>
+                <th>Description</th>
+                <th class="col-rule-status">Status</th>
+                <th class="col-rule-override">Override</th>
+              </tr>
+            </thead>
+            <tbody id="maturity-results-body"></tbody>
+          </table>
+        </div>
+
+        <div class="compliance-section">
+          <h3 class="compliance-section-title">Counterparty Exposure</h3>
+          <table class="compliance-table">
+            <thead>
+              <tr>
+                <th>Counterparty</th>
+                <th class="col-rule-status">Tradeable</th>
+              </tr>
+            </thead>
+            <tbody id="counterparty-results-body"></tbody>
+          </table>
+        </div>
+
+        <div class="compliance-section" id="counterparty-rules-section" style="display:none">
+          <h3 class="compliance-section-title">Counterparty Override Rules</h3>
+          <table class="compliance-table">
+            <thead>
+              <tr>
+                <th class="col-rule-id">Rule ID</th>
+                <th>Description</th>
+                <th class="col-rule-override">Override</th>
+              </tr>
+            </thead>
+            <tbody id="counterparty-rules-body"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="send-trade-btn" class="send-trade-btn" disabled>Send Trade</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/js/app.js"></script>
+</body>
+</html>
