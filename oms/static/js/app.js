@@ -8,6 +8,7 @@ let complianceExpiryTimer = null;
 let complianceCountdownTimer = null;
 const COMPLIANCE_TTL_MS = 2 * 60 * 1000; // 2 minutes
 let orderedTrades = []; // Sent but not yet settled
+let betaMode = false;
 
 document.addEventListener("DOMContentLoaded", () => {
   renderBusinessDate();
@@ -47,6 +48,7 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("sent-trades-btn").addEventListener("click", openDrawer);
   document.getElementById("close-drawer-btn").addEventListener("click", closeDrawer);
   document.getElementById("drawer-backdrop").addEventListener("click", closeDrawer);
+  // document.getElementById("beta-btn").addEventListener("click", onBetaToggle);
 });
 
 function openDrawer() {
@@ -154,17 +156,20 @@ function renderTable(portfolio) {
   // ── Cash row ─────────────────────────────────────────────────────────────
   const cashBalance = portfolio.cash_balance || 0;
   const cashGroupId = "cash";
-  const allDrafts = Array.from(draftTrades.values());
+  const allDrafts = Array.from(draftTrades.values()).filter(d => !(d.reason || "").startsWith("trs_"));
   const hasDrafts = allDrafts.length > 0;
-  const orderedCashTrades = orderedTrades.filter(o => o.status === "ordered");
-  const confirmedCashTrades = orderedTrades.filter(o => o.status === "confirmed");
+  const orderedCashTrades = orderedTrades.filter(o => o.status === "ordered" && !(o.reason || "").startsWith("trs_"));
+  const confirmedCashTrades = orderedTrades.filter(o => o.status === "confirmed" && !(o.reason || "").startsWith("trs_"));
 
+  // Cash impact is the opposite sign of market_value: a repo (negative notional/MV)
+  // gives collateral away and brings cash IN; a reverse repo (positive notional/MV)
+  // receives collateral and pays cash OUT.
   function cashAt(trades, t) {
     let total = 0;
     trades.forEach(o => {
       const s_t = tOffset(o.sdate, t0Date);
       const m_t = tOffset(o.mdate, t0Date);
-      if (s_t !== -1 && t >= s_t && (m_t === -1 || t < m_t)) total += Math.abs(o.market_value || 0);
+      if (s_t !== -1 && t >= s_t && (m_t === -1 || t < m_t)) total += -(o.market_value || 0);
     });
     return total;
   }
@@ -174,7 +179,7 @@ function renderTable(portfolio) {
     allDrafts.forEach(d => {
       const s_t = tOffset(d.sdate, t0Date);
       const m_t = tOffset(d.mdate, t0Date);
-      if (s_t !== -1 && t >= s_t && (m_t === -1 || t < m_t)) total += Math.abs(d.market_value || 0);
+      if (s_t !== -1 && t >= s_t && (m_t === -1 || t < m_t)) total += -(d.market_value || 0);
     });
     return total;
   }
@@ -192,6 +197,13 @@ function renderTable(portfolio) {
     return td;
   }
 
+  const trsPositions = betaMode ? portfolio.bonds.flatMap(b => b.positions.filter(p => p.type === "trs_receiver" || p.type === "trs_payer")) : [];
+  const hasTrsCash = trsPositions.length > 0;
+  function trsCashAt(t) {
+    let total = 0;
+    trsPositions.forEach(pos => { if (t < pos.repo_maturity_t) total += (pos.market_value || 0); });
+    return total;
+  }
   const hasProjected = hasDrafts || orderedCashTrades.length > 0 || confirmedCashTrades.length > 0;
 
   // Parent: Cash
@@ -212,7 +224,7 @@ function renderTable(portfolio) {
   cashParentTr.appendChild(makeEmptyCell());
   for (let t = 0; t <= 5; t++) {
     const base = t < 2 ? 1_000_000 : cashBalance;
-    cashParentTr.appendChild(makeNumCell(base + draftCashAt(t) + cashAt(orderedCashTrades, t) + cashAt(confirmedCashTrades, t)));
+    cashParentTr.appendChild(makeNumCell(base + draftCashAt(t) + cashAt(orderedCashTrades, t) + cashAt(confirmedCashTrades, t) + trsCashAt(t)));
   }
   tbody.appendChild(cashParentTr);
 
@@ -234,13 +246,13 @@ function renderTable(portfolio) {
     tbody.appendChild(tr);
   }
 
-  // Child: Ordered Cash
+  // Child: Working Cash
   if (orderedCashTrades.length > 0) {
     const tr = document.createElement("tr");
     tr.className = "child-row";
     tr.dataset.parentId = cashGroupId;
     tr.appendChild(makeEmptyCell()); tr.appendChild(makeEmptyCell()); tr.appendChild(makeEmptyCell());
-    tr.appendChild(makeBadgeCell("Ordered Cash", "type-ordered"));
+    tr.appendChild(makeBadgeCell("Working Cash", "type-working"));
     tr.appendChild(makeEmptyCell());
     for (let t = 0; t <= 5; t++) {
       const val = cashAt(orderedCashTrades, t);
@@ -264,6 +276,24 @@ function renderTable(portfolio) {
       const val = cashAt(confirmedCashTrades, t);
       const td = document.createElement("td");
       td.className = `num ${val > 0 ? "positive" : "matured"}`;
+      td.textContent = formatNum(val);
+      tr.appendChild(td);
+    }
+    tbody.appendChild(tr);
+  }
+
+  // Child: TRS Cash (beta mode — net MtM of active TRS positions)
+  if (hasTrsCash) {
+    const tr = document.createElement("tr");
+    tr.className = "child-row";
+    tr.dataset.parentId = cashGroupId;
+    tr.appendChild(makeEmptyCell()); tr.appendChild(makeEmptyCell()); tr.appendChild(makeEmptyCell());
+    tr.appendChild(makeBadgeCell("TRS Cash", "trs-return"));
+    tr.appendChild(makeEmptyCell());
+    for (let t = 0; t <= 5; t++) {
+      const val = trsCashAt(t);
+      const td = document.createElement("td");
+      td.className = `num ${val > 0 ? "positive" : val < 0 ? "negative" : "matured"}`;
       td.textContent = formatNum(val);
       tr.appendChild(td);
     }
@@ -351,7 +381,7 @@ function renderTable(portfolio) {
     }
 
     // Draft Net Avail row — only when this bond has proposed trades
-    const bondDrafts = Array.from(draftTrades.values()).filter(d => d.isin === bond.isin);
+    const bondDrafts = Array.from(draftTrades.values()).filter(d => d.isin === bond.isin && !(d.reason || "").startsWith("trs_"));
     let activePrimaryRow = parentTr;
     if (bondDrafts.length > 0) {
       const draftNetTr = document.createElement("tr");
@@ -422,14 +452,38 @@ function renderTable(portfolio) {
       tbody.appendChild(repoTr);
     });
 
+    // Children: TRS positions (beta mode — one net row per position)
+    if (betaMode) {
+      bond.positions.filter(p => p.type === "trs_receiver" || p.type === "trs_payer").forEach(pos => {
+        const isTrsReceiver = pos.type === "trs_receiver";
+        const badgeCls   = isTrsReceiver ? "trs-recv-return" : "trs-pay-return";
+        const badgeLabel = isTrsReceiver ? "TRS Recv"        : "TRS Payer";
+
+        const trsTr = document.createElement("tr");
+        trsTr.className = "child-row";
+        trsTr.dataset.parentId = groupId;
+        trsTr.innerHTML =
+          `<td></td><td></td><td></td>` +
+          `<td><span class="type-badge ${badgeCls}">${badgeLabel}</span></td>` +
+          `<td>${escHtml(pos.counterparty)}</td>`;
+        for (let t = 0; t <= 5; t++) {
+          const active = t < pos.repo_maturity_t;
+          const val = active ? (pos.market_value || 0) : 0;
+          const cls = val > 0 ? "positive" : val < 0 ? "negative" : "matured";
+          trsTr.innerHTML += `<td class="num ${cls}">${formatNum(val)}</td>`;
+        }
+        tbody.appendChild(trsTr);
+      });
+    }
+
     // Children: ordered (sent) trades — exclude rejected and settled
     const ordered = orderedTrades.filter(o => o.isin === bond.isin && o.status !== "settled" && o.status !== "rejected");
     ordered.forEach(o => {
       const orderedTr = document.createElement("tr");
       orderedTr.className = "child-row ordered-row";
       orderedTr.dataset.parentId = groupId;
-      const badgeCls = o.status === "confirmed" ? "type-confirmed" : "type-ordered";
-      const badgeLabel = o.status === "confirmed" ? "Confirmed" : "Ordered";
+      const badgeCls = o.status === "confirmed" ? "type-confirmed" : "type-working";
+      const badgeLabel = o.status === "confirmed" ? "Confirmed" : "Working";
       orderedTr.innerHTML =
         `<td></td><td></td><td></td>` +
         `<td><span class="type-badge ${badgeCls}">${badgeLabel}</span></td>` +
@@ -445,8 +499,8 @@ function renderTable(portfolio) {
       tbody.appendChild(orderedTr);
     });
 
-    // Children: draft trades
-    const drafts = Array.from(draftTrades.values()).filter(d => d.isin === bond.isin);
+    // Children: draft trades (repo only — TRS drafts don't affect bond inventory)
+    const drafts = Array.from(draftTrades.values()).filter(d => d.isin === bond.isin && !(d.reason || "").startsWith("trs_"));
     if (drafts.length > 0) {
       const draftTr = document.createElement("tr");
       draftTr.className = "child-row draft-row";
@@ -528,6 +582,12 @@ function checkShortSellWarning(portfolio, t0Date) {
   } else {
     warningEl.classList.add("hidden");
   }
+}
+
+function onBetaToggle() {
+  betaMode = !betaMode;
+  document.getElementById("beta-btn").classList.toggle("active", betaMode);
+  if (currentPortfolio) renderTable(currentPortfolio);
 }
 
 function onReset() {
@@ -661,6 +721,15 @@ function addTradeRow(bond) {
     }
     if (isNaN(num)) num = 0;
 
+    const reason = tr.querySelector(".trade-select")?.value || "";
+    if (reason === "trs_receiver") {
+      typeSpan.className = "type-badge trs-recv-return";
+      typeSpan.textContent = "TRS Recv"; return;
+    }
+    if (reason === "trs_payer") {
+      typeSpan.className = "type-badge trs-pay-return";
+      typeSpan.textContent = "TRS Payer"; return;
+    }
     if (num < 0) {
       typeSpan.className = "type-badge repo";
       typeSpan.textContent = "Repo";
@@ -695,11 +764,14 @@ function addTradeRow(bond) {
     const notional = parseInput(notionalInput.value) || 0;
     const absMv = Math.abs(parseInput(mvInput.value) || 0);
     draftTrade.notional = notional;
-    draftTrade.market_value = notional < 0 ? -absMv : absMv;
-    // sdate/mdate are set directly from Flatpickr onChange via closure vars below
     const rSelect = tr.querySelector(".trade-select");
-    draftTrade.reason = rSelect ? rSelect.value : "repo";
-    
+    const reason = rSelect ? rSelect.value : "repo";
+    draftTrade.reason = reason;
+    if (reason.startsWith("trs_")) {
+      draftTrade.market_value = notional >= 0 ? absMv : -absMv;
+    } else {
+      draftTrade.market_value = notional < 0 ? -absMv : absMv;
+    }
     if (currentPortfolio) renderTable(currentPortfolio);
   }
 
@@ -729,7 +801,10 @@ function addTradeRow(bond) {
     syncing = true;
     const notional = parseInput(notionalInput.value);
     if (!isNaN(notional) && notional !== 0) {
-      const mv = -(notional * dirtyPrice / 100);
+      const reason = tr.querySelector(".trade-select")?.value || "repo";
+      const mv = reason.startsWith("trs_")
+        ? (notional * dirtyPrice / 100)
+        : -(notional * dirtyPrice / 100);
       mvInput.value = formatInputNum(Math.round(mv));
     } else {
       mvInput.value = "";
@@ -744,7 +819,10 @@ function addTradeRow(bond) {
     syncing = true;
     const mv = parseInput(mvInput.value);
     if (!isNaN(mv) && mv !== 0 && dirtyPrice > 0) {
-      const notional = -(mv / dirtyPrice * 100);
+      const reason = tr.querySelector(".trade-select")?.value || "repo";
+      const notional = reason.startsWith("trs_")
+        ? (mv / dirtyPrice * 100)
+        : -(mv / dirtyPrice * 100);
       notionalInput.value = formatInputNum(Math.round(notional));
     } else {
       notionalInput.value = "";
@@ -850,16 +928,54 @@ function addTradeRow(bond) {
   mdateInput.type = "text";
   mdateInput.className = "sdate-hidden";
 
+  const maturityDetails = computeRepoMaturityDetails(currentPortfolio);
+
   mdateFp = flatpickr(mdateInput, {
     defaultDate: t3mStr,
     minDate: t2Str,
     dateFormat: "Y-m-d",
     disable: [ function(date) { return (date.getDay() === 0 || date.getDay() === 6); } ],
+    onDayCreate: function(dObj, dStr, fp, dayElem) {
+      const entries = maturityDetails.get(toInputDate(dayElem.dateObj)) || [];
+      const count = entries.length;
+      if (count > 0) {
+        const tier = Math.min(count, 3);
+        dayElem.classList.add("maturity-heat", `maturity-heat-${tier}`);
+
+        const header =
+          `<div class="maturity-tooltip-row maturity-tooltip-header">` +
+            `<span class="mt-name">Instrument</span>` +
+            `<span class="mt-notional">Notional</span>` +
+            `<span class="mt-mv">Market Value</span>` +
+          `</div>`;
+        const tooltipHtml = header + entries.map(e =>
+          `<div class="maturity-tooltip-row">` +
+            `<span class="mt-name">${escHtml(e.name)}</span>` +
+            `<span class="mt-notional">${formatNum(e.notional)}</span>` +
+            `<span class="mt-mv">${formatNum(Math.round(Math.abs(e.market_value)))}</span>` +
+          `</div>`
+        ).join("");
+        dayElem.addEventListener("mouseenter", () => showMaturityTooltip(dayElem, tooltipHtml));
+        dayElem.addEventListener("mouseleave", hideMaturityTooltip);
+      }
+    },
+    onReady: function(selectedDates, dateStr, instance) {
+      const legend = document.createElement("div");
+      legend.className = "maturity-legend";
+      legend.innerHTML =
+        `<span class="maturity-legend-item"><span class="maturity-swatch maturity-heat-1"></span>1 repo maturing</span>` +
+        `<span class="maturity-legend-item"><span class="maturity-swatch maturity-heat-2"></span>2 repos maturing</span>` +
+        `<span class="maturity-legend-item"><span class="maturity-swatch maturity-heat-3"></span>3+ repos maturing</span>`;
+      instance.calendarContainer.appendChild(legend);
+    },
     onChange: function(selectedDates, dateStr) {
       currentMdate = dateStr;
       draftTrade.mdate = dateStr;
       mdateDisplay.textContent = fmtSdate(dateStr);
       syncDraftTrade();
+    },
+    onClose: function() {
+      hideMaturityTooltip();
     }
   });
 
@@ -878,7 +994,11 @@ function addTradeRow(bond) {
   const reasonTd = document.createElement("td");
   const reasonSelect = document.createElement("select");
   reasonSelect.className = "trade-select";
-  [["", "Reason…"], ["repo", "Repo"], ["repo_rollover", "Repo Rollover"]].forEach(([val, label]) => {
+  const reasonOptions = [["", "Reason…"], ["repo", "Repo"], ["repo_rollover", "Repo Rollover"]];
+  if (betaMode) {
+    reasonOptions.push(["trs_receiver", "TRS Receiver"], ["trs_payer", "TRS Payer"]);
+  }
+  reasonOptions.forEach(([val, label]) => {
     const opt = document.createElement("option");
     opt.value = val;
     opt.textContent = label;
@@ -886,6 +1006,17 @@ function addTradeRow(bond) {
     reasonSelect.appendChild(opt);
   });
   reasonSelect.addEventListener("change", () => {
+    const reason = reasonSelect.value;
+    if (reason.startsWith("trs_")) {
+      const bondNotional = bond.positions.find(p => p.type === "bond")?.notional || 0;
+      const trsNotional = reason === "trs_receiver" ? bondNotional : -bondNotional;
+      notionalInput.value = formatInputNum(trsNotional);
+      mvInput.value = formatInputNum(Math.round(trsNotional * dirtyPrice / 100));
+    } else if (reason === "repo" || reason === "repo_rollover") {
+      notionalInput.value = formatInputNum(t2Notional);
+      mvInput.value = formatInputNum(Math.round(-(t2Notional * dirtyPrice / 100)));
+    }
+    updateTypeBadge(notionalInput.value);
     syncDraftTrade();
   });
   reasonTd.appendChild(reasonSelect);
@@ -937,7 +1068,7 @@ function netAvailableBook(bond, t, t0Date) {
     .reduce((sum, p) => sum + Math.abs(posValue(p)), 0);
   let orderedSum = 0;
   if (t0Date) {
-    orderedTrades.filter(o => o.isin === bond.isin).forEach(o => {
+    orderedTrades.filter(o => o.isin === bond.isin && !(o.reason || "").startsWith("trs_")).forEach(o => {
       const s_t = tOffset(o.sdate, t0Date);
       const m_t = tOffset(o.mdate, t0Date);
       if (s_t !== -1 && t >= s_t && (m_t === -1 || t < m_t)) {
@@ -959,7 +1090,7 @@ function netAvailable(bond, t, t0Date) {
 
   let draftSum = 0;
   if (t0Date) {
-    const drafts = Array.from(draftTrades.values()).filter(d => d.isin === bond.isin);
+    const drafts = Array.from(draftTrades.values()).filter(d => d.isin === bond.isin && !(d.reason || "").startsWith("trs_"));
     drafts.forEach(draft => {
       const s_t = tOffset(draft.sdate, t0Date);
       const m_t = tOffset(draft.mdate, t0Date);
@@ -978,7 +1109,7 @@ function netAvailable(bond, t, t0Date) {
   }
   let orderedSum = 0;
   if (t0Date) {
-    orderedTrades.filter(o => o.isin === bond.isin).forEach(o => {
+    orderedTrades.filter(o => o.isin === bond.isin && !(o.reason || "").startsWith("trs_")).forEach(o => {
       const s_t = tOffset(o.sdate, t0Date);
       const m_t = tOffset(o.mdate, t0Date);
       if (s_t !== -1 && t >= s_t && (m_t === -1 || t < m_t)) {
@@ -998,7 +1129,7 @@ function netAvailableNotional(bond, t, t0Date) {
 
   let draftSum = 0;
   if (t0Date) {
-    const drafts = Array.from(draftTrades.values()).filter(d => d.isin === bond.isin);
+    const drafts = Array.from(draftTrades.values()).filter(d => d.isin === bond.isin && !(d.reason || "").startsWith("trs_"));
     drafts.forEach(draft => {
       const s_t = tOffset(draft.sdate, t0Date);
       const m_t = tOffset(draft.mdate, t0Date);
@@ -1014,7 +1145,7 @@ function netAvailableNotional(bond, t, t0Date) {
 
   let orderedSum = 0;
   if (t0Date) {
-    orderedTrades.filter(o => o.isin === bond.isin).forEach(o => {
+    orderedTrades.filter(o => o.isin === bond.isin && !(o.reason || "").startsWith("trs_")).forEach(o => {
       const s_t = tOffset(o.sdate, t0Date);
       const m_t = tOffset(o.mdate, t0Date);
       if (s_t !== -1 && t >= s_t && (m_t === -1 || t < m_t)) {
@@ -1104,6 +1235,55 @@ function tOffset(dateStr, t0Date) {
   return -1;
 }
 
+// Maps calendar date string -> [{name, notional, market_value}, ...] of repo positions maturing that day
+function computeRepoMaturityDetails(portfolio) {
+  let maxT = 0;
+  portfolio.bonds.forEach(b => b.positions.forEach(p => {
+    if (p.type === "repo") maxT = Math.max(maxT, p.repo_maturity_t || 0);
+  }));
+  const dates = getBusinessDates(maxT + 1);
+  const details = new Map();
+  portfolio.bonds.forEach(b => {
+    b.positions.forEach(p => {
+      if (p.type !== "repo") return;
+      const key = toInputDate(dates[p.repo_maturity_t]);
+      if (!details.has(key)) details.set(key, []);
+      details.get(key).push({ name: b.name, notional: p.notional, market_value: p.market_value });
+    });
+  });
+  return details;
+}
+
+// Single shared tooltip element, appended to <body> so it escapes Flatpickr's
+// own overflow:hidden day-container (used to mask month-slide animations) —
+// a tooltip positioned as a descendant of a day cell gets clipped to it.
+let maturityTooltipEl = null;
+
+function showMaturityTooltip(anchorEl, html) {
+  if (!maturityTooltipEl) {
+    maturityTooltipEl = document.createElement("div");
+    maturityTooltipEl.className = "maturity-tooltip";
+    document.body.appendChild(maturityTooltipEl);
+  }
+  maturityTooltipEl.innerHTML = html;
+  maturityTooltipEl.style.display = "block";
+
+  const rect = anchorEl.getBoundingClientRect();
+  const tRect = maturityTooltipEl.getBoundingClientRect();
+  let left = rect.left + rect.width / 2 - tRect.width / 2;
+  left = Math.max(4, Math.min(left, window.innerWidth - tRect.width - 4));
+  let top = rect.bottom + 4;
+  if (top + tRect.height > window.innerHeight - 4) {
+    top = rect.top - tRect.height - 4;
+  }
+  maturityTooltipEl.style.left = `${left}px`;
+  maturityTooltipEl.style.top = `${top}px`;
+}
+
+function hideMaturityTooltip() {
+  if (maturityTooltipEl) maturityTooltipEl.style.display = "none";
+}
+
 // ── Compliance ──────────────────────────────────────────────────────────────
 
 function onSendTrade() {
@@ -1134,31 +1314,88 @@ function onSendTrade() {
     reason: d.reason || "repo",
   }));
 
-  fetch("/api/send-trade", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ portfolio_id: currentPortfolio.id, trades }),
-  })
-    .then(r => r.json())
-    .then(data => {
-      orderedTrades = data.sent_trades || [];
-      draftTrades.clear();
-      lastComplianceData = null;
-      lastComplianceTime = null;
-      if (complianceExpiryTimer) clearTimeout(complianceExpiryTimer);
-      if (complianceCountdownTimer) clearInterval(complianceCountdownTimer);
+  // Bonds with a draft in this batch, in case the request fails and we need to roll back
+  const draftIsins = [...new Set(trades.map(t => t.isin))];
+  const sentAt = new Date().toISOString();
+  const optimisticTrades = trades.map(t => ({
+    ...t,
+    counterparty: "",
+    status: "ordered",
+    sent_at: sentAt,
+  }));
+  const optimisticIds = new Set(optimisticTrades.map(t => t.id));
 
-      document.getElementById("compliance-overlay").classList.add("hidden");
-      document.getElementById("trades-panel").classList.add("hidden");
-      document.getElementById("trades-body").innerHTML = "";
-      updateTradesCount();
+  // Render immediately as "Working" so the send has a visible in-flight stage
+  orderedTrades = orderedTrades.concat(optimisticTrades);
+  draftTrades.clear();
+  lastComplianceData = null;
+  lastComplianceTime = null;
+  if (complianceExpiryTimer) clearTimeout(complianceExpiryTimer);
+  if (complianceCountdownTimer) clearInterval(complianceCountdownTimer);
+
+  document.getElementById("compliance-overlay").classList.add("hidden");
+  document.getElementById("trades-panel").classList.add("hidden");
+  document.getElementById("trades-body").innerHTML = "";
+  updateTradesCount();
+
+  renderSentTradesBlotter(orderedTrades);
+  if (currentPortfolio) renderTable(currentPortfolio);
+  openDrawer();
+
+  const MIN_WORKING_MS = 700;
+  Promise.all([
+    fetch("/api/send-trade", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ portfolio_id: currentPortfolio.id, trades }),
+    }).then(r => r.json()),
+    new Promise(resolve => setTimeout(resolve, MIN_WORKING_MS)),
+  ])
+    .then(([data]) => {
+      orderedTrades = data.sent_trades || [];
+      // Keep portfolioData in sync so switching portfolios and back doesn't
+      // clobber orderedTrades with a stale snapshot (onPortfolioChange reads
+      // sent_trades off portfolioData, not the live orderedTrades variable).
+      const pd = portfolioData.find(p => p.id === currentPortfolio.id);
+      if (pd) pd.sent_trades = orderedTrades;
+      const results = data.results || [];
 
       renderSentTradesBlotter(orderedTrades);
       if (currentPortfolio) renderTable(currentPortfolio);
-      openDrawer();
+
+      // Rejected trades go back into the draft panel for redraft
+      results.filter(r => r.status === "rejected").forEach(r => {
+        const bond = currentPortfolio.bonds.find(b => b.isin === r.isin);
+        if (bond) addTradeRow(bond);
+      });
+
+      // If any confirmed trade already settles as of today, refresh holdings
+      const t0Date = getBusinessDates(1)[0];
+      const needsRefresh = results.some(r => {
+        if (r.status !== "confirmed") return false;
+        const [y, mo, d] = r.sdate.split("-").map(Number);
+        return new Date(y, mo - 1, d) <= t0Date;
+      });
+      if (needsRefresh) {
+        fetch("/api/portfolios").then(r => r.json()).then(pdata => {
+          portfolioData = pdata.portfolios;
+          currentPortfolio = portfolioData.find(p => p.id === currentPortfolio.id);
+          orderedTrades = currentPortfolio.sent_trades || [];
+          renderSentTradesBlotter(orderedTrades);
+          renderTable(currentPortfolio);
+        });
+      }
     })
     .catch(err => {
       alert("Send failed: " + err.message);
+      // Roll back the optimistic "Working" rows and let the PM redraft
+      orderedTrades = orderedTrades.filter(o => !optimisticIds.has(o.id));
+      renderSentTradesBlotter(orderedTrades);
+      if (currentPortfolio) renderTable(currentPortfolio);
+      draftIsins.forEach(isin => {
+        const bond = currentPortfolio.bonds.find(b => b.isin === isin);
+        if (bond) addTradeRow(bond);
+      });
       btn.disabled = false;
       btn.textContent = "Send Trade";
     });
@@ -1175,7 +1412,7 @@ function sentTradeStatusBadge(t) {
     case "settled":
       return `<span class="type-badge type-settled">Settled</span>`;
     default:
-      return `<span class="type-badge type-ordered">Ordered</span>`;
+      return `<span class="type-badge type-working">Working</span>`;
   }
 }
 
@@ -1192,7 +1429,7 @@ function renderSentTradesBlotter(trades) {
   trades.forEach(t => {
     const tr = document.createElement("tr");
     tr.dataset.tradeId = t.id;
-    const rateText = t.repo_rate != null ? `${t.repo_rate.toFixed(2)}%` : "—";
+    const rateText = t.repo_rate != null ? `${t.repo_rate.toFixed(2)}%` : t.trs_fixed_rate != null ? `${t.trs_fixed_rate.toFixed(2)}%` : "—";
     const cptyDisplay = t.counterparty || (t.status === "ordered" ? "Pending" : (t.approved_counterparties || []).join(", ") || "—");
     tr.innerHTML =
       `<td>${escHtml(t.bond_name)}</td>` +
@@ -1205,69 +1442,9 @@ function renderSentTradesBlotter(trades) {
       `<td>${sentTradeStatusBadge(t)}</td>` +
       `<td></td>`;
 
-    if (t.status === "ordered") {
-      const actionTd = tr.lastElementChild;
-      const execBtn = document.createElement("button");
-      execBtn.className = "execute-btn";
-      execBtn.textContent = "Execute";
-      execBtn.addEventListener("click", () => onExecuteTrade(t.id, execBtn));
-      actionTd.appendChild(execBtn);
-    }
-
     tbody.appendChild(tr);
   });
 
-}
-
-function onExecuteTrade(tradeId, btn) {
-  if (!currentPortfolio) return;
-  btn.disabled = true;
-  btn.textContent = "…";
-
-  fetch("/api/execute-trade", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ portfolio_id: currentPortfolio.id, trade_id: tradeId }),
-  })
-    .then(r => r.json())
-    .then(data => {
-      if (data.error) { alert("Execution failed: " + data.error); btn.disabled = false; btn.textContent = "Execute"; return; }
-
-      if (data.rejected) {
-        // Keep in blotter as rejected, re-add to draft panel
-        const rejected = data.trade;
-        const ridx = orderedTrades.findIndex(o => o.id === tradeId);
-        if (ridx !== -1) orderedTrades[ridx] = rejected;
-        renderSentTradesBlotter(orderedTrades);
-        const bond = currentPortfolio.bonds.find(b => b.isin === rejected.isin);
-        if (bond) addTradeRow(bond);
-        if (currentPortfolio) renderTable(currentPortfolio);
-        return;
-      }
-
-      const updated = data.trade;
-      const idx = orderedTrades.findIndex(o => o.id === tradeId);
-      if (idx !== -1) orderedTrades[idx] = updated;
-      renderSentTradesBlotter(orderedTrades);
-      if (currentPortfolio) renderTable(currentPortfolio);
-
-      // If confirmed and sdate <= today, reload portfolio so settled repo appears in holdings
-      if (updated.status === "confirmed") {
-        const t0Date = getBusinessDates(1)[0];
-        const [y, mo, d] = updated.sdate.split("-").map(Number);
-        const sdate = new Date(y, mo - 1, d);
-        if (sdate <= t0Date) {
-          fetch("/api/portfolios").then(r => r.json()).then(pdata => {
-            portfolioData = pdata.portfolios;
-            currentPortfolio = portfolioData.find(p => p.id === currentPortfolio.id);
-            orderedTrades = currentPortfolio.sent_trades || [];
-            renderSentTradesBlotter(orderedTrades);
-            renderTable(currentPortfolio);
-          });
-        }
-      }
-    })
-    .catch(err => { alert("Execute failed: " + err.message); btn.disabled = false; btn.textContent = "Execute"; });
 }
 
 function onRunCompliance() {

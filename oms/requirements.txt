@@ -1,5 +1,6 @@
-anthropic
+anthropic==0.125.0
 flask
 python-dotenv
 gunicorn
 python-dateutil
+openpyxl

@@ -7,33 +7,43 @@ load_dotenv()
 client = Anthropic()
 MODEL = "claude-haiku-4-5"
 
-DEALER_PROMPT = """You are a repo desk dealer at a prime brokerage. A fund manager has sent you a repo trade request.
+DEALER_PROMPT = """You are a senior dealer at a prime brokerage handling repo and TRS trades. A fund manager has sent you a trade request.
 
 <standing_instructions>
-The trade includes an "approved_counterparties" list — these are the only counterparties the fund's compliance has cleared. You MUST choose one from this list to execute with. Do not use any counterparty not on this list. All counterparties on the list have signed GMRA documentation, completed KYC, and have established credit lines — do not reject on those grounds. The only valid rejection reasons are: notional above £500M on a single ISIN, or collateral that is genuinely unacceptable (e.g. unrated, illiquid). Standard UK gilts and IG-rated corporates are always acceptable.
+The trade includes an "approved_counterparties" list — these are the only counterparties the fund's compliance has cleared. You MUST choose one from this list. All counterparties have completed KYC, signed documentation (GMRA for repos, ISDA/CSA for TRS), and have established credit lines — do not reject on those grounds. The only valid rejection reasons are: notional above £500M on a single ISIN, or collateral that is genuinely unacceptable (unrated or illiquid). Standard UK gilts and IG-rated corporates are always acceptable.
 </standing_instructions>
 
-<pricing>
-BoE base rate: 4.75% p.a. Price the repo rate as follows:
+<repo_pricing>
+For reason "repo" or "repo_rollover" — GMRA instrument:
+BoE base rate: 4.75% p.a.
 - UK gilts (GC): base rate minus 5–10bps (e.g. 4.65–4.70%)
 - IG corporates (Apple, Meta, Tesco, CRWV): base rate plus 10–25bps (e.g. 4.85–5.00%)
 - Tenor adjustment: add 0–5bps per month of tenor beyond 1 month
 - Size adjustment: add 2–3bps if notional exceeds £100M on a single ISIN
-</pricing>
+Confirm with: {{"confirmed": true, "chosen_counterparty": "...", "repo_rate": <float, annualised % to 2dp>, "dealer_commentary": "..."}}
+</repo_pricing>
+
+<trs_pricing>
+For reason "trs_receiver" or "trs_payer" — ISDA/CSA instrument, no physical bond movement:
+SONIA: 5.20% p.a.
+- UK gilts: SONIA + 30–60bps = ~5.50–5.80%
+- IG corporates: SONIA + 70–120bps = ~5.90–6.40%
+- Tenor adjustment: add 0–5bps per month beyond 3 months
+Quote the fixed leg rate (trs_fixed_rate) that the counterparty charges.
+Confirm with: {{"confirmed": true, "chosen_counterparty": "...", "trs_fixed_rate": <float, annualised % to 2dp>, "dealer_commentary": "..."}}
+</trs_pricing>
 
 <sign_convention>
-Negative notional = repo (fund borrows cash, pledges collateral to you)
-Positive notional = reverse repo (fund lends cash, receives collateral from you)
+Negative notional = repo or TRS payer (fund pays total return, receives fixed)
+Positive notional = reverse repo or TRS receiver (fund receives total return, pays fixed)
 </sign_convention>
 
 <trade>
 {trade_json}
 </trade>
 
-Respond with a JSON object only — no markdown, no preamble:
-
-Confirming: {{"confirmed": true, "chosen_counterparty": "<one name from approved_counterparties>", "repo_rate": <float, annualised % to 2dp>, "dealer_commentary": "<one sentence stating counterparty, rate and collateral type>"}}
-Rejecting:  {{"confirmed": false, "rejection_reason": "<specific operational reason>", "dealer_commentary": "<one sentence>"}}"""
+Respond with a JSON object only — no markdown, no preamble.
+For rejection: {{"confirmed": false, "rejection_reason": "<specific operational reason>", "dealer_commentary": "<one sentence>"}}"""
 
 
 def run_dealer_check(trade: dict) -> dict:

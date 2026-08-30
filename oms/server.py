@@ -68,6 +68,33 @@ BOND_SPECS = {
         "credit_spread": 0.0,
         "fallback_yield": 0.040,
     },
+    "GB00BJ7ZTF54": {
+        "name": "UKT 4.0% 2027",
+        "coupon": 0.04,
+        "maturity_date": "2027-03-22",
+        "freq": 2,
+        "convention": "ACT/ACT",
+        "credit_spread": 0.0,
+        "fallback_yield": 0.039,
+    },
+    "GB00BFWFPP80": {
+        "name": "UKTI 0.125% 2029",
+        "coupon": 0.00125,
+        "maturity_date": "2029-08-10",
+        "freq": 2,
+        "convention": "ACT/ACT",
+        "credit_spread": 0.0,
+        "fallback_yield": 0.015,
+    },
+    "GB00BX9C7T25": {
+        "name": "UKTI 0.375% 2035",
+        "coupon": 0.00375,
+        "maturity_date": "2035-03-22",
+        "freq": 2,
+        "convention": "ACT/ACT",
+        "credit_spread": 0.0,
+        "fallback_yield": 0.018,
+    },
     "US037833DX25": {
         "name": "Apple 3.25% 2032",
         "coupon": 0.0325,
@@ -106,6 +133,18 @@ COUNTERPARTY_RULES = {
         {"name": "HSBC", "lower_bound": -50_000_000, "upper_bound": 50_000_000},
         {"name": "Deutsche Bank", "lower_bound": -22_000_000, "upper_bound": 22_000_000},
     ],
+    "liquidity-fund": [
+        {"name": "Barclays", "lower_bound": -15_000_000, "upper_bound": 15_000_000},
+        {"name": "HSBC", "lower_bound": -20_000_000, "upper_bound": 20_000_000},
+    ],
+    "special-collateral": [
+        {"name": "Goldman Sachs", "lower_bound": -20_000_000, "upper_bound": 20_000_000},
+        {"name": "Morgan Stanley", "lower_bound": -20_000_000, "upper_bound": 20_000_000},
+    ],
+    "gilt-financing": [
+        {"name": "Citi", "lower_bound": -20_000_000, "upper_bound": 20_000_000},
+        {"name": "Barclays", "lower_bound": -20_000_000, "upper_bound": 20_000_000},
+    ],
 }
 
 MATURITY_MV_BOUND = 55_000_000
@@ -114,6 +153,9 @@ MATURITY_PCT_BOUND = 30
 CASH_BALANCES = {
     "sterling-ig":   -150_000_000,
     "global-credit": -120_000_000,
+    "liquidity-fund": -3_000_000,
+    "special-collateral": 1_000_000,
+    "gilt-financing": 1_500_000,
 }
 
 PORTFOLIOS = [
@@ -127,6 +169,7 @@ PORTFOLIOS = [
                     {"type": "bond", "notional": 50_000_000, "counterparty": None, "repo_maturity_t": None},
                     {"type": "repo", "notional": -15_000_000, "counterparty": "Barclays", "repo_maturity_t": 2},
                     {"type": "repo", "notional": -10_000_000, "counterparty": "JPM", "repo_maturity_t": 4},
+                    {"type": "trs_receiver", "notional": 25_000_000, "counterparty": "Goldman Sachs", "repo_maturity_t": 65, "fixed_rate": 4.82, "entry_price": 94.50, "days_elapsed": 22},
                 ],
             },
             {
@@ -143,6 +186,7 @@ PORTFOLIOS = [
                 "positions": [
                     {"type": "bond", "notional": 100_000_000, "counterparty": None, "repo_maturity_t": None},
                     {"type": "repo", "notional": -30_000_000, "counterparty": "Citi", "repo_maturity_t": 3},
+                    {"type": "trs_payer", "notional": -20_000_000, "counterparty": "Morgan Stanley", "repo_maturity_t": 45, "fixed_rate": 5.65, "entry_price": 101.50, "days_elapsed": 15},
                 ],
             },
             {
@@ -166,6 +210,33 @@ PORTFOLIOS = [
                 "positions": [
                     {"type": "bond", "notional": 35_000_000, "counterparty": None, "repo_maturity_t": None},
                     {"type": "repo", "notional": -9_000_000, "counterparty": "Goldman Sachs", "repo_maturity_t": 3},
+                ],
+            },
+            {
+                "isin": "GB00BJ7ZTF54",
+                "positions": [
+                    {"type": "bond", "notional": 45_000_000, "counterparty": None, "repo_maturity_t": None},
+                    {"type": "repo", "notional": -12_000_000, "counterparty": "JPM", "repo_maturity_t": 8},
+                    {"type": "repo", "notional": -10_000_000, "counterparty": "HSBC", "repo_maturity_t": 8},
+                    {"type": "repo", "notional": -8_000_000, "counterparty": "Morgan Stanley", "repo_maturity_t": 22},
+                ],
+            },
+            {
+                "isin": "GB00BFWFPP80",
+                "positions": [
+                    {"type": "bond", "notional": 55_000_000, "counterparty": None, "repo_maturity_t": None},
+                    {"type": "repo", "notional": -9_000_000, "counterparty": "HSBC", "repo_maturity_t": 15},
+                    {"type": "repo", "notional": -8_000_000, "counterparty": "Morgan Stanley", "repo_maturity_t": 22},
+                    {"type": "repo", "notional": -7_000_000, "counterparty": "JPM", "repo_maturity_t": 30},
+                ],
+            },
+            {
+                "isin": "GB00BX9C7T25",
+                "positions": [
+                    {"type": "bond", "notional": 40_000_000, "counterparty": None, "repo_maturity_t": None},
+                    {"type": "repo", "notional": -9_000_000, "counterparty": "Morgan Stanley", "repo_maturity_t": 22},
+                    {"type": "repo", "notional": -6_000_000, "counterparty": "HSBC", "repo_maturity_t": 38},
+                    {"type": "repo", "notional": -5_000_000, "counterparty": "JPM", "repo_maturity_t": 45},
                 ],
             },
         ],
@@ -203,6 +274,7 @@ PORTFOLIOS = [
                     {"type": "repo", "notional": -15_000_000, "counterparty": "JPM", "repo_maturity_t": 1},
                     {"type": "repo", "notional": -10_000_000, "counterparty": "Citi", "repo_maturity_t": 2},
                     {"type": "repo", "notional": -5_000_000, "counterparty": "HSBC", "repo_maturity_t": 5},
+                    {"type": "trs_receiver", "notional": 15_000_000, "counterparty": "Goldman Sachs", "repo_maturity_t": 55, "fixed_rate": 5.85, "entry_price": 99.80, "days_elapsed": 18},
                 ],
             },
             {
@@ -218,6 +290,75 @@ PORTFOLIOS = [
                 "positions": [
                     {"type": "bond", "notional": 40_000_000, "counterparty": None, "repo_maturity_t": None},
                     {"type": "repo", "notional": -13_000_000, "counterparty": "Morgan Stanley", "repo_maturity_t": 3},
+                    {"type": "trs_payer", "notional": -10_000_000, "counterparty": "JPM", "repo_maturity_t": 40, "fixed_rate": 6.10, "entry_price": 100.20, "days_elapsed": 12},
+                ],
+            },
+        ],
+    },
+    {
+        # Demo: cash goes negative from T+2 — needs a repo drafted on the one
+        # holding to raise cash and cover the shortfall.
+        "id": "liquidity-fund",
+        "name": "DEMO: Cash Shortfall T+2",
+        "bonds": [
+            {
+                "isin": "GB00BYY5F144",
+                "positions": [
+                    {"type": "bond", "notional": 20_000_000, "counterparty": None, "repo_maturity_t": None},
+                ],
+            },
+            {
+                "isin": "GB00BMBL1G81",
+                "positions": [
+                    {"type": "bond", "notional": 12_000_000, "counterparty": None, "repo_maturity_t": None},
+                ],
+            },
+            {
+                "isin": "GB00BL6C6328",
+                "positions": [
+                    {"type": "bond", "notional": 10_000_000, "counterparty": None, "repo_maturity_t": None},
+                    # Small pre-existing repo so the book isn't empty — otherwise any
+                    # first draft trade is trivially "100% of book" for maturity concentration.
+                    {"type": "repo", "notional": -5_000_000, "counterparty": "HSBC", "repo_maturity_t": 20},
+                ],
+            },
+        ],
+    },
+    {
+        # Demo: existing repo notional already exceeds the bond holding —
+        # net available is negative, needs a reverse repo to cover the gap.
+        # Cash is tight enough that covering the shortfall this way spends
+        # more cash than is on hand, so a second bond needs repoing to raise
+        # cash back to positive.
+        "id": "special-collateral",
+        "name": "DEMO: Security Shortfall - Reverse Repo",
+        "bonds": [
+            {
+                "isin": "GB00BMBL1G81",
+                "positions": [
+                    {"type": "bond", "notional": 10_000_000, "counterparty": None, "repo_maturity_t": None},
+                    {"type": "repo", "notional": -12_000_000, "counterparty": "Goldman Sachs", "repo_maturity_t": 10},
+                ],
+            },
+            {
+                "isin": "GB00BMV7TC07",
+                "positions": [
+                    {"type": "bond", "notional": 8_000_000, "counterparty": None, "repo_maturity_t": None},
+                ],
+            },
+        ],
+    },
+    {
+        # Demo: the one existing repo matures T+2 — needs a repo_rollover
+        # trade drafted before it unwinds.
+        "id": "gilt-financing",
+        "name": "DEMO: Repo Maturing - Needs Roll",
+        "bonds": [
+            {
+                "isin": "GB00BMV7TC07",
+                "positions": [
+                    {"type": "bond", "notional": 15_000_000, "counterparty": None, "repo_maturity_t": None},
+                    {"type": "repo", "notional": -8_000_000, "counterparty": "Citi", "repo_maturity_t": 2},
                 ],
             },
         ],
@@ -242,7 +383,10 @@ def refresh_prices():
         else:
             yld = spec["fallback_yield"]
 
-        result = price_bond(spec["coupon"], mat, yld, spec["freq"], spec["convention"], today)
+        result = price_bond(
+            spec["coupon"], mat, spec["freq"], spec["convention"],
+            curve, spec["credit_spread"], spec["fallback_yield"], today,
+        )
         result["yield_rate"] = round(yld * 100, 4)
         result["source"] = "BoE" if curve else "fallback"
         _price_cache[isin] = result
@@ -285,12 +429,24 @@ def _auto_settle(ptf: dict):
             continue
         mdate = date.fromisoformat(trade["mdate"])
         repo_maturity_t = _count_business_days_to(mdate)
-        bond_entry["positions"].append({
-            "type": "repo",
-            "notional": trade["notional"],
-            "counterparty": trade["counterparty"],
-            "repo_maturity_t": repo_maturity_t,
-        })
+        reason = trade.get("reason", "repo")
+        if reason.startswith("trs_"):
+            bond_entry["positions"].append({
+                "type": reason,
+                "notional": trade["notional"],
+                "counterparty": trade["counterparty"],
+                "repo_maturity_t": repo_maturity_t,
+                "fixed_rate": trade.get("trs_fixed_rate", 5.5),
+                "entry_price": trade.get("entry_price", 100.0),
+                "days_elapsed": 0,
+            })
+        else:
+            bond_entry["positions"].append({
+                "type": "repo",
+                "notional": trade["notional"],
+                "counterparty": trade["counterparty"],
+                "repo_maturity_t": repo_maturity_t,
+            })
         trade["status"] = "settled"
 
 
@@ -308,8 +464,19 @@ def build_portfolio_response():
 
             positions = []
             for pos in bond_entry["positions"]:
-                mv = dirty / 100 * pos["notional"]
-                positions.append({**pos, "market_value": round(mv, 2)})
+                if pos["type"].startswith("trs_"):
+                    entry_price = pos.get("entry_price", dirty)
+                    notional = pos["notional"]
+                    fixed_rate = pos.get("fixed_rate", 0)
+                    days_elapsed = pos.get("days_elapsed", 0)
+                    receiver_sign = 1 if pos["type"] == "trs_receiver" else -1
+                    trs_return = receiver_sign * (dirty - entry_price) / 100 * abs(notional)
+                    fixed_accrued = -receiver_sign * (fixed_rate / 100) * abs(notional) * days_elapsed / 252
+                    mv = trs_return + fixed_accrued
+                    positions.append({**pos, "market_value": round(mv, 2), "trs_return": round(trs_return, 2), "fixed_accrued": round(fixed_accrued, 2)})
+                else:
+                    mv = dirty / 100 * pos["notional"]
+                    positions.append({**pos, "market_value": round(mv, 2)})
 
             bonds.append({
                 "isin": isin,
@@ -363,9 +530,19 @@ def build_compliance_task(portfolio_id, draft_trades):
         dirty = pricing.get("dirty_price", 100.0)
 
         for pos in bond_entry["positions"]:
-            if pos["type"] != "repo":
+            if pos["type"] not in ("repo", "trs_receiver", "trs_payer"):
                 continue
-            mv = dirty / 100 * pos["notional"]
+            if pos["type"].startswith("trs_"):
+                entry_price = pos.get("entry_price", dirty)
+                notional = pos["notional"]
+                fixed_rate = pos.get("fixed_rate", 0)
+                days_elapsed = pos.get("days_elapsed", 0)
+                receiver_sign = 1 if pos["type"] == "trs_receiver" else -1
+                trs_return = receiver_sign * (dirty - entry_price) / 100 * abs(notional)
+                fixed_accrued = -receiver_sign * (fixed_rate / 100) * abs(notional) * days_elapsed / 252
+                mv = trs_return + fixed_accrued
+            else:
+                mv = dirty / 100 * pos["notional"]
             repo_mat = _business_day_offset(today, pos.get("repo_maturity_t", 0))
             repo_mat_str = repo_mat.isoformat()
             book.append({
@@ -562,6 +739,30 @@ def api_run_compliance():
     return jsonify(results)
 
 
+def _resolve_via_dealer(trade: dict):
+    """Run the dealer check for a freshly-sent trade and resolve it to a terminal state."""
+    confirmed_at = datetime.now().isoformat(timespec="seconds")
+    try:
+        result = run_dealer_check(trade)
+    except Exception as exc:
+        trade["status"] = "rejected"
+        trade["rejection_reason"] = f"Dealer check failed: {exc}"
+        trade["dealer_commentary"] = "Operational error while contacting the dealer desk."
+        return
+
+    if result.get("confirmed"):
+        trade["status"] = "confirmed"
+        trade["counterparty"] = result.get("chosen_counterparty", trade.get("approved_counterparties", ["Unknown"])[0])
+        trade["repo_rate"] = result.get("repo_rate")
+        trade["trs_fixed_rate"] = result.get("trs_fixed_rate")
+        trade["dealer_commentary"] = result.get("dealer_commentary", "")
+        trade["confirmed_at"] = confirmed_at
+    else:
+        trade["status"] = "rejected"
+        trade["rejection_reason"] = result.get("rejection_reason", "")
+        trade["dealer_commentary"] = result.get("dealer_commentary", "")
+
+
 @app.route("/api/send-trade", methods=["POST"])
 def api_send_trade():
     body = request.get_json()
@@ -572,6 +773,7 @@ def api_send_trade():
         SENT_TRADES[portfolio_id] = []
 
     sent_at = datetime.now().isoformat(timespec="seconds")
+    results = []
     for trade in trades:
         isin = trade.get("isin", "")
         spec = BOND_SPECS.get(isin, {})
@@ -581,7 +783,8 @@ def api_send_trade():
         mv = dirty / 100 * notional
 
         approved = trade.get("approved_counterparties", [])
-        SENT_TRADES[portfolio_id].append({
+        reason = trade.get("reason", "repo")
+        sent_trade = {
             "id": trade.get("id", sent_at),
             "isin": isin,
             "bond_name": spec.get("name", trade.get("bond_name", isin)),
@@ -591,12 +794,18 @@ def api_send_trade():
             "approved_counterparties": approved,
             "sdate": trade.get("sdate", ""),
             "mdate": trade.get("mdate", ""),
-            "reason": trade.get("reason", "repo"),
+            "reason": reason,
             "status": "ordered",
             "sent_at": sent_at,
-        })
+        }
+        if reason.startswith("trs_"):
+            sent_trade["entry_price"] = round(dirty, 4)
+        SENT_TRADES[portfolio_id].append(sent_trade)
 
-    return jsonify({"sent_trades": SENT_TRADES[portfolio_id]})
+        _resolve_via_dealer(sent_trade)
+        results.append(sent_trade)
+
+    return jsonify({"sent_trades": SENT_TRADES[portfolio_id], "results": results})
 
 
 @app.route("/api/sent-trades/<portfolio_id>")
@@ -610,32 +819,6 @@ def api_reset():
     return jsonify(build_portfolio_response())
 
 
-@app.route("/api/execute-trade", methods=["POST"])
-def api_execute_trade():
-    body = request.get_json()
-    portfolio_id = body.get("portfolio_id")
-    trade_id = body.get("trade_id")
-
-    trades = SENT_TRADES.get(portfolio_id, [])
-    trade = next((t for t in trades if t["id"] == trade_id), None)
-    if trade is None or trade.get("status") != "ordered":
-        return jsonify({"error": "Trade not found or not in ordered state"}), 404
-
-    result = run_dealer_check(trade)
-    confirmed_at = datetime.now().isoformat(timespec="seconds")
-
-    if result.get("confirmed"):
-        trade["status"] = "confirmed"
-        trade["counterparty"] = result.get("chosen_counterparty", trade.get("approved_counterparties", ["Unknown"])[0])
-        trade["repo_rate"] = result.get("repo_rate")
-        trade["dealer_commentary"] = result.get("dealer_commentary", "")
-        trade["confirmed_at"] = confirmed_at
-        return jsonify({"trade": trade})
-    else:
-        trade["status"] = "rejected"
-        trade["rejection_reason"] = result.get("rejection_reason", "")
-        trade["dealer_commentary"] = result.get("dealer_commentary", "")
-        return jsonify({"rejected": True, "trade": trade})
 
 
 if __name__ == "__main__":

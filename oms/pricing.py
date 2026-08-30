@@ -65,8 +65,8 @@ def calc_accrued_interest(
 
 
 def calc_clean_price(
-    coupon_rate: float, maturity: date, yield_rate: float,
-    freq: int, settle: date,
+    coupon_rate: float, maturity: date, freq: int, settle: date,
+    curve: dict[float, float] | None, credit_spread: float, fallback_yield: float,
 ) -> float:
     future_coupons = coupon_dates(maturity, freq, settle)
     if not future_coupons:
@@ -79,21 +79,28 @@ def calc_clean_price(
     accrued_days = (settle - prev_cpn).days
     frac_into_period = accrued_days / period_days if period_days > 0 else 0
 
+    def yield_for(cashflow_date: date) -> float:
+        if curve:
+            return get_yield_for_bond(cashflow_date, settle, curve, credit_spread)
+        return fallback_yield
+
     pv = 0.0
-    discount_rate = 1 + yield_rate / freq
     for i, cpn_date in enumerate(future_coupons):
         n = i + 1 - frac_into_period
+        discount_rate = 1 + yield_for(cpn_date) / freq
         pv += coupon_payment / (discount_rate ** n)
 
     n_mat = len(future_coupons) - frac_into_period
-    pv += 100.0 / (discount_rate ** n_mat)
+    discount_rate_mat = 1 + yield_for(maturity) / freq
+    pv += 100.0 / (discount_rate_mat ** n_mat)
 
     return pv
 
 
 def price_bond(
-    coupon_rate: float, maturity: date, yield_rate: float,
-    freq: int, convention: str, settle: date = None,
+    coupon_rate: float, maturity: date, freq: int, convention: str,
+    curve: dict[float, float] | None, credit_spread: float, fallback_yield: float,
+    settle: date = None,
 ) -> dict:
     if settle is None:
         settle = date.today()
@@ -106,7 +113,7 @@ def price_bond(
             "settle_date": settle.isoformat(),
         }
 
-    clean = calc_clean_price(coupon_rate, maturity, yield_rate, freq, settle)
+    clean = calc_clean_price(coupon_rate, maturity, freq, settle, curve, credit_spread, fallback_yield)
     accrued = calc_accrued_interest(coupon_rate, freq, maturity, settle, convention)
     dirty = clean + accrued
 
@@ -196,7 +203,7 @@ if __name__ == "__main__":
         ("CRWV 3.0% 2029",   0.03,    date(2029, 2, 15), 0.058, 2, "30/360"),
     ]
     for name, cpn, mat, yld, freq, conv in bonds:
-        result = price_bond(cpn, mat, yld, freq, conv)
+        result = price_bond(cpn, mat, freq, conv, None, 0.0, yld)
         print(f"{name:20s}  clean={result['clean_price']:8.4f}  "
               f"accrued={result['accrued_interest']:7.4f}  "
               f"dirty={result['dirty_price']:8.4f}")

@@ -195,6 +195,24 @@ header h1 {
   color: #fff;
 }
 
+.beta-btn {
+  padding: 5px 12px;
+  border: 1.5px solid #3b82f6;
+  border-radius: 4px;
+  background: transparent;
+  color: #93c5fd;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.beta-btn:hover,
+.beta-btn.active {
+  background: #1d4ed8;
+  color: #fff;
+}
+
 .controls-divider {
   width: 1px;
   height: 16px;
@@ -474,7 +492,7 @@ tr.child-row.visible {
   border: none;
 }
 
-.type-badge.type-ordered {
+.type-badge.type-working {
   background: #fef3c7;
   color: #92400e;
   font-weight: 700;
@@ -573,6 +591,113 @@ td.num.matured {
 .draft-net-row {
   background: #fffdf0;
   border-left: 3px solid #d97706;
+}
+
+/* Repo maturity concentration heatmap — mdate Flatpickr day cells */
+.flatpickr-day.maturity-heat {
+  position: relative;
+  font-weight: 700;
+}
+
+.flatpickr-day.maturity-heat-1,
+.maturity-swatch.maturity-heat-1 {
+  background: #dbeafe;
+  border-color: #bfdbfe;
+  color: #1e3a8a;
+}
+
+.flatpickr-day.maturity-heat-2,
+.maturity-swatch.maturity-heat-2 {
+  background: #93c5fd;
+  border-color: #60a5fa;
+  color: #1e3a8a;
+}
+
+.flatpickr-day.maturity-heat-3,
+.maturity-swatch.maturity-heat-3 {
+  background: #1d4ed8;
+  border-color: #1e40af;
+  color: #fff;
+}
+
+.maturity-tooltip {
+  display: none;
+  position: fixed;
+  z-index: 100000;
+  min-width: 190px;
+  max-width: 260px;
+  padding: 6px 8px;
+  background: #fff;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  font-weight: 400;
+  text-align: left;
+  white-space: normal;
+}
+
+.maturity-tooltip-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 2px 0;
+  font-size: 10px;
+  color: #1e293b;
+}
+
+.maturity-tooltip-row + .maturity-tooltip-row {
+  border-top: 1px solid #f1f5f9;
+}
+
+.mt-name {
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.mt-notional,
+.mt-mv {
+  flex: none;
+  min-width: 58px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.maturity-tooltip-header .mt-name,
+.maturity-tooltip-header .mt-notional,
+.maturity-tooltip-header .mt-mv {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  color: #94a3b8;
+}
+
+.maturity-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 8px 10px;
+  border-top: 1px solid #e5e7eb;
+  font-size: 10px;
+  color: #475569;
+}
+
+.maturity-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.maturity-swatch {
+  display: inline-block;
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 2px;
 }
 
 .draft-net-row td {
@@ -1165,6 +1290,12 @@ tr.trade-row:hover {
   font-weight: 700;
 }
 
+.type-badge.trs-recv-return { background: #f0fdf4; color: #15803d; font-weight: 700; } /* green  — fund receives */
+.type-badge.trs-pay-return  { background: #fef2f2; color: #dc2626; font-weight: 700; } /* red    — fund pays    */
+.type-badge.trs-pay-fixed   { background: #fef2f2; color: #dc2626; font-weight: 700; } /* red    — fund pays    */
+.type-badge.trs-recv-fixed  { background: #f0fdf4; color: #15803d; font-weight: 700; } /* green  — fund receives */
+.type-badge.trs-return      { background: #f0fdf4; color: #15803d; font-weight: 700; } /* TRS Cash row          */
+
 .blotter-commentary {
   font-size: 10px;
   color: #888;
@@ -1174,24 +1305,3 @@ tr.trade-row:hover {
   max-width: 220px;
 }
 
-.execute-btn {
-  font-size: 11px;
-  padding: 3px 10px;
-  background: #1565c0;
-  color: #fff;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-weight: 600;
-  transition: background 0.15s;
-  white-space: nowrap;
-}
-
-.execute-btn:hover:not(:disabled) {
-  background: #0d47a1;
-}
-
-.execute-btn:disabled {
-  background: #90a4ae;
-  cursor: not-allowed;
-}
