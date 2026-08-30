@@ -15,7 +15,7 @@ app = Flask(__name__)
 
 BOND_SPECS = {
     "GB00BYY5F144": {
-        "name": "UKT 4.5% 2028",
+        "name": "UKT 4.5% Dec 2028",
         "coupon": 0.045,
         "maturity_date": "2028-12-07",
         "freq": 2,
@@ -24,7 +24,7 @@ BOND_SPECS = {
         "fallback_yield": 0.041,
     },
     "GB00BMBL1G81": {
-        "name": "UKT 1.0% 2032",
+        "name": "UKT 1.0% Jan 2032",
         "coupon": 0.01,
         "maturity_date": "2032-01-31",
         "freq": 2,
@@ -33,7 +33,7 @@ BOND_SPECS = {
         "fallback_yield": 0.043,
     },
     "GB00BMV7TC07": {
-        "name": "UKT 4.25% 2034",
+        "name": "UKT 4.25% Jun 2034",
         "coupon": 0.0425,
         "maturity_date": "2034-06-07",
         "freq": 2,
@@ -42,7 +42,7 @@ BOND_SPECS = {
         "fallback_yield": 0.042,
     },
     "US30303M8T60": {
-        "name": "Meta 4.45% 2029",
+        "name": "Meta 4.45% Aug 2029",
         "coupon": 0.0445,
         "maturity_date": "2029-08-15",
         "freq": 2,
@@ -51,7 +51,7 @@ BOND_SPECS = {
         "fallback_yield": 0.051,
     },
     "US22890MAA09": {
-        "name": "CRWV 3.0% 2029",
+        "name": "CRWV 3.0% Feb 2029",
         "coupon": 0.03,
         "maturity_date": "2029-02-15",
         "freq": 2,
@@ -60,7 +60,7 @@ BOND_SPECS = {
         "fallback_yield": 0.058,
     },
     "GB00BL6C6328": {
-        "name": "UKT 0.625% 2030",
+        "name": "UKT 0.625% Jun 2030",
         "coupon": 0.00625,
         "maturity_date": "2030-06-07",
         "freq": 2,
@@ -69,7 +69,7 @@ BOND_SPECS = {
         "fallback_yield": 0.040,
     },
     "GB00BJ7ZTF54": {
-        "name": "UKT 4.0% 2027",
+        "name": "UKT 4.0% Mar 2027",
         "coupon": 0.04,
         "maturity_date": "2027-03-22",
         "freq": 2,
@@ -78,7 +78,7 @@ BOND_SPECS = {
         "fallback_yield": 0.039,
     },
     "GB00BFWFPP80": {
-        "name": "UKTI 0.125% 2029",
+        "name": "UKTI 0.125% Aug 2029",
         "coupon": 0.00125,
         "maturity_date": "2029-08-10",
         "freq": 2,
@@ -87,7 +87,7 @@ BOND_SPECS = {
         "fallback_yield": 0.015,
     },
     "GB00BX9C7T25": {
-        "name": "UKTI 0.375% 2035",
+        "name": "UKTI 0.375% Mar 2035",
         "coupon": 0.00375,
         "maturity_date": "2035-03-22",
         "freq": 2,
@@ -96,7 +96,7 @@ BOND_SPECS = {
         "fallback_yield": 0.018,
     },
     "US037833DX25": {
-        "name": "Apple 3.25% 2032",
+        "name": "Apple 3.25% Feb 2032",
         "coupon": 0.0325,
         "maturity_date": "2032-02-08",
         "freq": 2,
@@ -105,7 +105,7 @@ BOND_SPECS = {
         "fallback_yield": 0.046,
     },
     "XS2356943897": {
-        "name": "Tesco 5.125% 2031",
+        "name": "Tesco 5.125% Sep 2031",
         "coupon": 0.05125,
         "maturity_date": "2031-09-24",
         "freq": 2,
