@@ -9,6 +9,8 @@ let complianceCountdownTimer = null;
 const COMPLIANCE_TTL_MS = 2 * 60 * 1000; // 2 minutes
 let orderedTrades = []; // Sent but not yet settled
 let betaMode = false;
+let sortColumn = null; // 0-5 for T+n, or null for the default type/maturity sort
+let sortDirection = null; // "asc" | "desc" | null
 
 document.addEventListener("DOMContentLoaded", () => {
   renderBusinessDate();
@@ -49,6 +51,12 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("close-drawer-btn").addEventListener("click", closeDrawer);
   document.getElementById("drawer-backdrop").addEventListener("click", closeDrawer);
   // document.getElementById("beta-btn").addEventListener("click", onBetaToggle);
+
+  document.querySelectorAll("#positions-table thead .col-tn").forEach((th, i) => {
+    th.addEventListener("click", () => onSortHeaderClick(i));
+  });
+
+  document.getElementById("expand-all-btn").addEventListener("click", onExpandAll);
 });
 
 function openDrawer() {
@@ -316,10 +324,11 @@ function renderTable(portfolio) {
   }
   // ─────────────────────────────────────────────────────────────────────────
 
-  portfolio.bonds.forEach((bond, bondIdx) => {
+  const sortedBonds = getSortedBonds(portfolio, t0Date);
+  sortedBonds.forEach((bond) => {
     const bondPos = bond.positions.find((p) => p.type === "bond");
     const repos = bond.positions.filter((p) => p.type === "repo");
-    const groupId = `bond-${bondIdx}`;
+    const groupId = `bond-${bond.isin}`;
 
     // Parent row: net available
     const parentTr = document.createElement("tr");
@@ -674,7 +683,23 @@ function renderTnHeaders() {
     th.innerHTML =
       `<span class="tn-label">T+${i}</span>` +
       `<span class="tn-date">${label}</span>`;
+    th.classList.toggle("sort-asc", sortColumn === i && sortDirection === "asc");
+    th.classList.toggle("sort-desc", sortColumn === i && sortDirection === "desc");
   });
+}
+
+// Clicking a T+n header cycles asc -> desc -> reset (back to default type/maturity order)
+function onSortHeaderClick(t) {
+  if (sortColumn !== t) {
+    sortColumn = t;
+    sortDirection = "asc";
+  } else if (sortDirection === "asc") {
+    sortDirection = "desc";
+  } else {
+    sortColumn = null;
+    sortDirection = null;
+  }
+  if (currentPortfolio) renderTable(currentPortfolio);
 }
 
 // ── Trades panel ─────────────────────────────────────────────────────────────
@@ -1163,6 +1188,16 @@ function toggleChildren(parentTr, groupId) {
   });
 }
 
+function onExpandAll() {
+  document.querySelectorAll("#positions-body tr.parent-row").forEach((tr) => {
+    tr.classList.add("expanded");
+    const groupId = tr.dataset.groupId;
+    document.querySelectorAll(`tr[data-parent-id="${groupId}"]`).forEach((child) => {
+      child.classList.add("visible");
+    });
+  });
+}
+
 function formatNum(n) {
   if (n === 0) return "0";
   const abs = Math.abs(n);
@@ -1182,6 +1217,34 @@ function bondTypeLabel(name) {
   if (u.includes("UKTI")) return { label: "INF",  cls: "inf" };
   if (u.includes("UKT"))  return { label: "IR",   cls: "ir" };
                           return { label: "CORP", cls: "corp" };
+}
+
+// Default sort order: IR, then INF, then CORP
+function bondTypeRank(name) {
+  const cls = bondTypeLabel(name).cls;
+  return cls === "ir" ? 0 : cls === "inf" ? 1 : 2;
+}
+
+// Returns portfolio.bonds sorted per the current header sort state: the
+// default is type-rank then maturity ascending; clicking a T+n column header
+// instead sorts by that column's net-available value (already reflecting
+// draft/ordered/confirmed trades, matching the current display mode).
+function getSortedBonds(portfolio, t0Date) {
+  const bonds = portfolio.bonds.slice();
+
+  if (sortColumn === null) {
+    return bonds.sort((a, b) => {
+      const rankDiff = bondTypeRank(a.name) - bondTypeRank(b.name);
+      if (rankDiff !== 0) return rankDiff;
+      return (a.maturity_date || "").localeCompare(b.maturity_date || "");
+    });
+  }
+
+  const t = sortColumn;
+  const dir = sortDirection === "desc" ? -1 : 1;
+  // netAvailable already branches on displayMode internally (via posValue), matching
+  // how the "Draft Net Avail" row calls it unconditionally elsewhere in this file.
+  return bonds.sort((a, b) => (netAvailable(a, t, t0Date) - netAvailable(b, t, t0Date)) * dir);
 }
 
 function escHtml(str) {
