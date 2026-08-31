@@ -177,10 +177,10 @@ def run_evaluation(
         try:
             result = run_test_case(tc, run_prompt_fn)
         except Exception as e:
-            print(f"[{i}/{total}] ERROR — {tc.get('scenario_label', '?')}: {e}")
+            print(f"[{i}/{total}] ERROR - {tc.get('scenario_label', '?')}: {e}")
             continue
         results.append(result)
-        print(f"[{i}/{total}] score={result['score']} — {tc.get('scenario_label', '?')}")
+        print(f"[{i}/{total}] score={result['score']} - {tc.get('scenario_label', '?')}")
 
     avg = mean([r["score"] for r in results]) if results else 0
     print(f"\nAverage score: {avg:.1f} / 10")
@@ -191,5 +191,5 @@ def run_evaluation(
     with open(html_output_file, "w", encoding="utf-8") as f:
         f.write(_generate_html_report(results))
 
-    print(f"Results → {json_output_file}  |  Report → {html_output_file}")
+    print(f"Results -> {json_output_file}  |  Report -> {html_output_file}")
     return results
