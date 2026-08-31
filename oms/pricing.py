@@ -64,7 +64,7 @@ def calc_accrued_interest(
     return coupon_payment * frac
 
 
-def calc_clean_price(
+def calc_dirty_price(
     coupon_rate: float, maturity: date, freq: int, settle: date,
     curve: dict[float, float] | None, credit_spread: float, fallback_yield: float,
 ) -> float:
@@ -113,9 +113,9 @@ def price_bond(
             "settle_date": settle.isoformat(),
         }
 
-    clean = calc_clean_price(coupon_rate, maturity, freq, settle, curve, credit_spread, fallback_yield)
+    dirty = calc_dirty_price(coupon_rate, maturity, freq, settle, curve, credit_spread, fallback_yield)
     accrued = calc_accrued_interest(coupon_rate, freq, maturity, settle, convention)
-    dirty = clean + accrued
+    clean = dirty - accrued
 
     return {
         "clean_price": round(clean, 4),
