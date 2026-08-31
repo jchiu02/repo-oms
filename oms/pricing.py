@@ -1,7 +1,9 @@
+import calendar
 import io
+import json
 import zipfile
 import urllib.request
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from dateutil.relativedelta import relativedelta
 
 
@@ -131,7 +133,9 @@ BOE_YIELD_CURVE_URL = (
 )
 
 
-def fetch_boe_yield_curve() -> dict[float, float] | None:
+def fetch_boe_yield_curve(real: bool = False) -> dict[float, float] | None:
+    """Fetches the BoE nominal (default) or real (index-linked) spot curve.
+    Both live in the same zip, just different files — one fetch covers either."""
     try:
         req = urllib.request.Request(BOE_YIELD_CURVE_URL, headers={"User-Agent": "Mozilla/5.0"})
         resp = urllib.request.urlopen(req, timeout=30)
@@ -139,10 +143,11 @@ def fetch_boe_yield_curve() -> dict[float, float] | None:
     except Exception:
         return None
 
+    filename = "GLC Real daily data current month.xlsx" if real else "GLC Nominal daily data current month.xlsx"
     try:
         import openpyxl
         with zipfile.ZipFile(io.BytesIO(data)) as zf:
-            content = zf.read("GLC Nominal daily data current month.xlsx")
+            content = zf.read(filename)
             wb = openpyxl.load_workbook(io.BytesIO(content), read_only=True)
             ws = wb["4. spot curve"]
             rows = list(ws.iter_rows(values_only=True))
@@ -192,6 +197,86 @@ def get_yield_for_bond(
         return 0.0
     base_yield = interpolate_yield(curve, years)
     return base_yield + credit_spread
+
+
+# ── Index-linked gilts (linkers) ────────────────────────────────────────────
+#
+# UK linkers uplift both coupon and principal by an Index Ratio tracking RPI,
+# using a 3-month lag so the reference index is always already published.
+# Standard convention: discount the REAL cashflow schedule at the REAL yield
+# to get a real price, then multiply by the Index Ratio at settlement to get
+# the money (nominal) price — this avoids needing to project future
+# inflation, since the lag means the settlement-date Index Ratio only needs
+# RPI prints that already exist.
+
+ONS_RPI_URL = "https://www.ons.gov.uk/economy/inflationandpriceindices/timeseries/chaw/mm23/data"
+
+
+def fetch_rpi_series() -> dict[tuple[int, int], float] | None:
+    """Fetches the ONS RPI All Items Index (series CHAW) as {(year, month): index_value}."""
+    try:
+        req = urllib.request.Request(ONS_RPI_URL, headers={"User-Agent": "Mozilla/5.0"})
+        resp = urllib.request.urlopen(req, timeout=30)
+        payload = json.loads(resp.read())
+    except Exception:
+        return None
+
+    try:
+        series = {}
+        for m in payload.get("months", []):
+            month_num = datetime.strptime(m["month"], "%B").month
+            series[(int(m["year"]), month_num)] = float(m["value"])
+        return series if series else None
+    except Exception:
+        return None
+
+
+def _month_add(year: int, month: int, delta: int) -> tuple[int, int]:
+    total = (year * 12 + (month - 1)) + delta
+    return total // 12, total % 12 + 1
+
+
+def reference_rpi(d: date, rpi_series: dict[tuple[int, int], float]) -> float | None:
+    """3-month lag reference RPI for date d: linearly interpolated, by day-of-month,
+    between the published RPI for the month 3 months before d and 2 months before d."""
+    y3, m3 = _month_add(d.year, d.month, -3)
+    y2, m2 = _month_add(d.year, d.month, -2)
+    rpi3 = rpi_series.get((y3, m3))
+    rpi2 = rpi_series.get((y2, m2))
+    if rpi3 is None or rpi2 is None:
+        return None
+    days_in_month = calendar.monthrange(d.year, d.month)[1]
+    frac = (d.day - 1) / days_in_month
+    return rpi3 + frac * (rpi2 - rpi3)
+
+
+def index_ratio(d: date, base_rpi: float, rpi_series: dict | None) -> float:
+    if rpi_series:
+        ref = reference_rpi(d, rpi_series)
+        if ref is not None:
+            return ref / base_rpi
+    return 1.0  # no RPI data available — no uplift rather than a guess
+
+
+def price_linker(
+    coupon_rate: float, maturity: date, freq: int, convention: str,
+    real_curve: dict[float, float] | None, real_fallback_yield: float,
+    base_rpi: float, rpi_series: dict | None,
+    settle: date = None,
+) -> dict:
+    if settle is None:
+        settle = date.today()
+
+    real = price_bond(coupon_rate, maturity, freq, convention, real_curve, 0.0, real_fallback_yield, settle)
+    ratio = index_ratio(settle, base_rpi, rpi_series)
+
+    return {
+        "clean_price": round(real["clean_price"] * ratio, 4),
+        "accrued_interest": round(real["accrued_interest"] * ratio, 4),
+        "dirty_price": round(real["dirty_price"] * ratio, 4),
+        "settle_date": real["settle_date"],
+        "index_ratio": round(ratio, 6),
+    }
 
 
 if __name__ == "__main__":

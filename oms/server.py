@@ -5,7 +5,7 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 
 from flask import Flask, jsonify, render_template, request
-from pricing import price_bond, fetch_boe_yield_curve, get_yield_for_bond
+from pricing import price_bond, price_linker, fetch_boe_yield_curve, fetch_rpi_series, get_yield_for_bond
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "compliance"))
 from compliance_prompt import run_compliance_check
@@ -85,6 +85,8 @@ BOND_SPECS = {
         "convention": "ACT/ACT",
         "credit_spread": 0.0,
         "fallback_yield": 0.015,
+        "linker": True,
+        "base_rpi": 243.0,
     },
     "GB00BX9C7T25": {
         "name": "UKTI 0.375% Mar 2035",
@@ -94,6 +96,8 @@ BOND_SPECS = {
         "convention": "ACT/ACT",
         "credit_spread": 0.0,
         "fallback_yield": 0.018,
+        "linker": True,
+        "base_rpi": 258.0,
     },
     "US037833DX25": {
         "name": "Apple 3.25% Feb 2032",
@@ -374,21 +378,28 @@ def refresh_prices():
     global _last_refreshed, _price_cache
     today = date.today()
     curve = fetch_boe_yield_curve()
+    real_curve = fetch_boe_yield_curve(real=True)
+    rpi_series = fetch_rpi_series()
 
     for isin, spec in BOND_SPECS.items():
         mat = date.fromisoformat(spec["maturity_date"])
 
-        if curve:
-            yld = get_yield_for_bond(mat, today, curve, spec["credit_spread"])
+        if spec.get("linker"):
+            yld = get_yield_for_bond(mat, today, real_curve, 0.0) if real_curve else spec["fallback_yield"]
+            result = price_linker(
+                spec["coupon"], mat, spec["freq"], spec["convention"],
+                real_curve, spec["fallback_yield"], spec["base_rpi"], rpi_series, today,
+            )
+            result["source"] = "BoE real curve" if real_curve else "fallback"
         else:
-            yld = spec["fallback_yield"]
+            yld = get_yield_for_bond(mat, today, curve, spec["credit_spread"]) if curve else spec["fallback_yield"]
+            result = price_bond(
+                spec["coupon"], mat, spec["freq"], spec["convention"],
+                curve, spec["credit_spread"], spec["fallback_yield"], today,
+            )
+            result["source"] = "BoE" if curve else "fallback"
 
-        result = price_bond(
-            spec["coupon"], mat, spec["freq"], spec["convention"],
-            curve, spec["credit_spread"], spec["fallback_yield"], today,
-        )
         result["yield_rate"] = round(yld * 100, 4)
-        result["source"] = "BoE" if curve else "fallback"
         _price_cache[isin] = result
 
     _last_refreshed = datetime.now().isoformat(timespec="seconds")
