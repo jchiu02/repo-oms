@@ -18,8 +18,8 @@ The system receives a rule configuration, a current repo book, and a proposed ne
 Rules are hierarchical:
 - Parent rules contain child rules
 - Each parent rule combines its children with AND or OR logic
-- OR: parent breached if ANY child breached
-- AND: parent breached only if ALL children breached
+- AND: parent breached if ANY child breached (must pass every child to remain compliant)
+- OR: parent breached only if ALL children breached (passes if at least one child passes)
 - PM override required if ANY parent rule is breached
 
 Rule configurations vary per test case because they come from different client mandates.
@@ -84,9 +84,9 @@ Generate diverse test cases. Each test case contains:
 
 Vary scenarios to cover:
 - Clean pass (no parent rules breached)
-- OR parent breached (at least one child triggers)
-- AND parent breached (all children trigger)
-- AND parent NOT breached despite partial child breach (critical edge case)
+- AND parent breached (at least one child triggers)
+- OR parent breached (all children trigger)
+- OR parent NOT breached despite partial child breach (critical edge case)
 - Multiple parent rules breached simultaneously
 - Net calculation reduces exposure (proposed trade offsets existing position)
 - Net calculation increases exposure beyond limit
@@ -164,7 +164,7 @@ Return a JSON array. Each element:
 - Maturity dates between 2026-06-15 and 2026-12-31
 - Notionals between -800000000 and +800000000 (signed)
 - pm_override_required is true if and only if any parent_results entry has breached=true
-- For AND logic scenarios, deliberately include cases where some but not all children breach
+- For OR logic scenarios, deliberately include cases where some but not all children breach (this must NOT trigger the parent — the critical edge case)
 - Reasoning must reference specific calculated values and limits
 - Each parent rule's type must match its children's dimensions (concentration_maturity -> maturity_month/maturity_pct only; counterparty -> counterparty/counterparty_mtm/counterparty_pct only; counterparty_risk -> counterparty_pv01/counterparty_ie01 only)
 - Do NOT mix dimension types within a single parent rule

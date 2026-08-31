@@ -36,7 +36,7 @@ GRADER_PROMPT = """You are grading a repo pre-trade compliance engine's output a
 - 7-8: Correct verdicts with minor net_value calculation errors, or incomplete reasoning
 - 9-10: Fully correct — right `pm_override_required`, right per-parent and per-child breach flags, mathematically accurate net_values, reasoning that cites specific numbers
 
-Pay particular attention to AND-logic parents: an AND parent is NOT breached unless ALL children breach — a partial child breach must NOT trigger the parent. Penalize heavily if this is wrong.
+Pay particular attention to OR-logic parents: an OR parent is NOT breached unless ALL children breach — a partial child breach must NOT trigger the parent. Penalize heavily if this is wrong.
 
 Return JSON with this exact structure:
 ```json

@@ -80,6 +80,6 @@ The table displays bond holdings with parent/child netting:
   - `maturity_month` — aggregate `market_value` (not notional) by maturity month; maturity concentration is assessed on a mark-to-market basis
   - `counterparty_mtm` — aggregate the `mtm` field (not notional) by counterparty; bounds are absolute MtM limits
   - `counterparty_pct` — aggregate `market_value` by counterparty expressed as a percentage of the rule's `total_limit`; bounds are percentages
-- **OR parent**: breached if ANY child breaches
-- **AND parent**: breached only if ALL children breach — partial breach does NOT trigger the parent (the critical AND edge case)
+- **AND parent**: breached if ANY child breaches — must pass every child to remain compliant
+- **OR parent**: breached only if ALL children breach — passes if at least one child passes; partial breach does NOT trigger the parent (the critical OR edge case)
 - `pm_override_required` is true if and only if any parent is breached

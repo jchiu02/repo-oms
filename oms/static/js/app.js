@@ -1467,11 +1467,11 @@ function onSendTrade() {
 function sentTradeStatusBadge(t) {
   switch (t.status) {
     case "confirmed":
-      return `<span class="type-badge type-confirmed">Confirmed</span>` +
-             (t.dealer_commentary ? `<div class="blotter-commentary">${escHtml(t.dealer_commentary)}</div>` : "");
+      return `<span class="type-badge type-confirmed">Confirmed</span>`;
+      // + (t.dealer_commentary ? `<div class="blotter-commentary">${escHtml(t.dealer_commentary)}</div>` : "");
     case "rejected":
-      return `<span class="type-badge type-rejected">Rejected</span>` +
-             (t.rejection_reason ? `<div class="blotter-commentary">${escHtml(t.rejection_reason)}</div>` : "");
+      return `<span class="type-badge type-rejected">Rejected</span>`;
+      // + (t.rejection_reason ? `<div class="blotter-commentary">${escHtml(t.rejection_reason)}</div>` : "");
     case "settled":
       return `<span class="type-badge type-settled">Settled</span>`;
     default:
@@ -1492,14 +1492,14 @@ function renderSentTradesBlotter(trades) {
   trades.forEach(t => {
     const tr = document.createElement("tr");
     tr.dataset.tradeId = t.id;
-    const rateText = t.repo_rate != null ? `${t.repo_rate.toFixed(2)}%` : t.trs_fixed_rate != null ? `${t.trs_fixed_rate.toFixed(2)}%` : "—";
+    // const rateText = t.repo_rate != null ? `${t.repo_rate.toFixed(2)}%` : t.trs_fixed_rate != null ? `${t.trs_fixed_rate.toFixed(2)}%` : "—";
     const cptyDisplay = t.counterparty || (t.status === "ordered" ? "Pending" : (t.approved_counterparties || []).join(", ") || "—");
     tr.innerHTML =
       `<td>${escHtml(t.bond_name)}</td>` +
       `<td>${escHtml(cptyDisplay)}</td>` +
       `<td class="num negative">${formatNum(t.notional)}</td>` +
       `<td class="num">${formatNum(Math.round(Math.abs(t.market_value)))}</td>` +
-      `<td class="num">${rateText}</td>` +
+      // `<td class="num">${rateText}</td>` +
       `<td>${escHtml(t.sdate)}</td>` +
       `<td>${escHtml(t.mdate)}</td>` +
       `<td>${sentTradeStatusBadge(t)}</td>` +
@@ -1648,7 +1648,7 @@ function renderComplianceResults(data) {
       const parentTr = document.createElement("tr");
       parentTr.className = "compliance-row";
       parentTr.dataset.status = status;
-      parentTr.style.cursor = "pointer";
+      if (mode !== "tradeable") parentTr.style.cursor = "pointer";
       if (mode === "tradeable") {
         const cptyName = (r.child_results && r.child_results[0] && r.child_results[0].filter)
           || (r.description && r.description.split(":")[0].trim())
@@ -1777,41 +1777,45 @@ function renderComplianceResults(data) {
         }
       }
 
-      const detailRows = [];
+      // Expandable child detail rows only apply to Table 1 (status mode) — Table 2
+      // (tradeable mode) has its own separate expand-into-Table-3 mechanism above,
+      // triggered by the Yes/No badge, not by clicking the row itself.
+      if (mode !== "tradeable") {
+        const detailRows = [];
 
-      // Child rows: ID | Description + Value + Bounds | Status
-      if (r.child_results) {
-        r.child_results.forEach((c) => {
-          const cTr = document.createElement("tr");
-          cTr.className = "compliance-child";
-          cTr.dataset.status = status;
-          cTr.style.display = "none";
-          const cStatus = c.breached ? "Breach" : "Pass";
-          const cCls = c.breached ? "status-fail" : "status-pass";
-          cTr.innerHTML =
-            `<td class="child-id-cell">${c.id}</td>` +
-            `<td class="child-detail-cell">` +
-              `<div class="child-desc">${escHtml(c.description || c.filter)}</div>` +
-              `<div class="child-values">` +
-                `<span class="child-val-label">Value:</span> <span class="child-val num">${formatNum(Math.round(c.net_value))}</span>` +
-                `<span class="child-val-label">Bounds:</span> <span class="child-val">[${formatNum(c.lower_bound)}, ${formatNum(c.upper_bound)}]</span>` +
-              `</div>` +
-            `</td>` +
-            `<td><span class="${cCls}">${cStatus}</span></td>` +
-            `<td></td>`;
-          tbody.appendChild(cTr);
-          detailRows.push(cTr);
+        // Child rows: ID | Description + Value + Bounds | Status
+        if (r.child_results) {
+          r.child_results.forEach((c) => {
+            const cTr = document.createElement("tr");
+            cTr.className = "compliance-child";
+            cTr.dataset.status = status;
+            cTr.style.display = "none";
+            const cStatus = c.breached ? "Breach" : "Pass";
+            const cCls = c.breached ? "status-fail" : "status-pass";
+            cTr.innerHTML =
+              `<td class="child-id-cell">${c.id}</td>` +
+              `<td class="child-detail-cell">` +
+                `<div class="child-desc">${escHtml(c.description || c.filter)}</div>` +
+                `<div class="child-values">` +
+                  `<span class="child-val-label">Value:</span> <span class="child-val num">${formatNum(Math.round(c.net_value))}</span>` +
+                  `<span class="child-val-label">Bounds:</span> <span class="child-val">[${formatNum(c.lower_bound)}, ${formatNum(c.upper_bound)}]</span>` +
+                `</div>` +
+              `</td>` +
+              `<td><span class="${cCls}">${cStatus}</span></td>` +
+              `<td></td>`;
+            tbody.appendChild(cTr);
+            detailRows.push(cTr);
+          });
+        }
+
+        parentTr.addEventListener("click", () => {
+          const opening = detailRows[0] && detailRows[0].style.display === "none";
+          detailRows.forEach((dr) => {
+            dr.style.display = opening ? "table-row" : "none";
+          });
+          parentTr.querySelector(".compliance-chevron").classList.toggle("open", opening);
         });
       }
-
-
-      parentTr.addEventListener("click", () => {
-        const opening = detailRows[0] && detailRows[0].style.display === "none";
-        detailRows.forEach((dr) => {
-          dr.style.display = opening ? "table-row" : "none";
-        });
-        parentTr.querySelector(".compliance-chevron").classList.toggle("open", opening);
-      });
     });
   }
 

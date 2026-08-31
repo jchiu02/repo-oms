@@ -104,8 +104,8 @@ These are used to resolve formula-based bounds.
 </external_inputs>
 
 <logic_rules>
-OR parent rule: breached if ANY child rule is breached
-AND parent rule: breached only if ALL child rules are breached
+AND parent rule: breached if ANY child rule is breached (must pass every child to remain compliant)
+OR parent rule: breached only if ALL child rules are breached (passes if at least one child passes)
 A child rule is breached when its calculated net_value falls strictly
 outside the range: net_value < lower_bound OR net_value > upper_bound
 </logic_rules>
@@ -208,4 +208,6 @@ if __name__ == "__main__":
 
     output = run_compliance_check(task)
     print(output)
-    # Expected: JPM net = 230M > 200M → child breached → OR parent breached → pm_override_required=True
+    # Expected: JPM net = 230M > 200M → child breached → OR parent breached (its
+    # single child breached, which under OR is also "all children breached") →
+    # pm_override_required=True
