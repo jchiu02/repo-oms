@@ -191,6 +191,11 @@ PORTFOLIOS = [
                     {"type": "bond", "notional": 100_000_000, "counterparty": None, "repo_maturity_t": None},
                     {"type": "repo", "notional": -30_000_000, "counterparty": "Citi", "repo_maturity_t": 3},
                     {"type": "trs_payer", "notional": -20_000_000, "counterparty": "Morgan Stanley", "repo_maturity_t": 45, "fixed_rate": 5.65, "entry_price": 101.50, "days_elapsed": 15},
+                    # OTC collateral — pledged against an OTC derivative exposure, not a
+                    # repo trade, but still counts toward that counterparty's exposure;
+                    # open-ended (large repo_maturity_t keeps it "active" throughout
+                    # the T+0..T+5 projection window).
+                    {"type": "otc", "notional": -15_000_000, "counterparty": "Goldman Sachs", "repo_maturity_t": 999},
                 ],
             },
             {
@@ -207,6 +212,7 @@ PORTFOLIOS = [
                     {"type": "bond", "notional": 60_000_000, "counterparty": None, "repo_maturity_t": None},
                     {"type": "repo", "notional": -18_000_000, "counterparty": "Morgan Stanley", "repo_maturity_t": 2},
                     {"type": "repo", "notional": -12_000_000, "counterparty": "HSBC", "repo_maturity_t": 5},
+                    {"type": "otc", "notional": -8_000_000, "counterparty": "Barclays", "repo_maturity_t": 999},
                 ],
             },
             {
@@ -541,7 +547,7 @@ def build_compliance_task(portfolio_id, draft_trades):
         dirty = pricing.get("dirty_price", 100.0)
 
         for pos in bond_entry["positions"]:
-            if pos["type"] not in ("repo", "trs_receiver", "trs_payer"):
+            if pos["type"] not in ("repo", "otc", "trs_receiver", "trs_payer"):
                 continue
             if pos["type"].startswith("trs_"):
                 entry_price = pos.get("entry_price", dirty)

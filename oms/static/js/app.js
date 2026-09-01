@@ -328,6 +328,7 @@ function renderTable(portfolio) {
   sortedBonds.forEach((bond) => {
     const bondPos = bond.positions.find((p) => p.type === "bond");
     const repos = bond.positions.filter((p) => p.type === "repo");
+    const otcPositions = bond.positions.filter((p) => p.type === "otc");
     const groupId = `bond-${bond.isin}`;
 
     // Parent row: net available
@@ -459,6 +460,30 @@ function renderTable(portfolio) {
         repoTr.innerHTML += `<td class="num ${cls}">${formatNum(val)}</td>`;
       }
       tbody.appendChild(repoTr);
+    });
+
+    // Children: OTC collateral positions — inventory pledged out against an
+    // OTC (derivative) exposure rather than a repo; nets against the bond
+    // position the same way a repo does, and still counts toward that
+    // counterparty's exposure in compliance.
+    otcPositions.forEach((otc) => {
+      const otcTr = document.createElement("tr");
+      otcTr.className = "child-row";
+      otcTr.dataset.parentId = groupId;
+      otcTr.innerHTML =
+        `<td></td>` +
+        `<td></td>` +
+        `<td></td>` +
+        `<td><span class="type-badge otc-collateral">OTC Collateral</span></td>` +
+        `<td>${escHtml(otc.counterparty)}</td>`;
+
+      for (let t = 0; t <= 5; t++) {
+        const active = t < otc.repo_maturity_t;
+        const val = active ? posValue(otc) : 0;
+        const cls = active ? "negative" : "matured";
+        otcTr.innerHTML += `<td class="num ${cls}">${formatNum(val)}</td>`;
+      }
+      tbody.appendChild(otcTr);
     });
 
     // Children: TRS positions (beta mode — one net row per position)
@@ -1089,7 +1114,7 @@ function netAvailableBook(bond, t, t0Date) {
   const bondPos = bond.positions.find((p) => p.type === "bond");
   const bondVal = posValue(bondPos);
   const repoSum = bond.positions
-    .filter((p) => p.type === "repo" && t < p.repo_maturity_t)
+    .filter((p) => (p.type === "repo" || p.type === "otc") && t < p.repo_maturity_t)
     .reduce((sum, p) => sum + Math.abs(posValue(p)), 0);
   let orderedSum = 0;
   if (t0Date) {
@@ -1110,7 +1135,7 @@ function netAvailable(bond, t, t0Date) {
 
   // Let's keep original math.
   let originalRepoSum = bond.positions
-    .filter((p) => p.type === "repo" && t < p.repo_maturity_t)
+    .filter((p) => (p.type === "repo" || p.type === "otc") && t < p.repo_maturity_t)
     .reduce((sum, p) => sum + Math.abs(posValue(p)), 0);
 
   let draftSum = 0;
@@ -1149,7 +1174,7 @@ function netAvailable(bond, t, t0Date) {
 function netAvailableNotional(bond, t, t0Date) {
   const bondNotional = bond.positions.find((p) => p.type === "bond").notional;
   let originalRepoSum = bond.positions
-    .filter((p) => p.type === "repo" && t < p.repo_maturity_t)
+    .filter((p) => (p.type === "repo" || p.type === "otc") && t < p.repo_maturity_t)
     .reduce((sum, p) => sum + Math.abs(p.notional), 0);
 
   let draftSum = 0;
