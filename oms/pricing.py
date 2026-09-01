@@ -281,11 +281,11 @@ def price_linker(
 
 if __name__ == "__main__":
     bonds = [
-        ("UKT 4.5% Dec 2028",   0.045,   date(2028, 12, 7), 0.041, 2, "ACT/ACT"),
-        ("UKT 1.0% Jan 2032",   0.01,    date(2032, 1, 31), 0.043, 2, "ACT/ACT"),
-        ("UKT 4.25% Jun 2034",  0.0425,  date(2034, 6, 7),  0.042, 2, "ACT/ACT"),
-        ("Meta 4.45% Aug 2029",  0.0445,  date(2029, 8, 15), 0.051, 2, "30/360"),
-        ("CRWV 3.0% Feb 2029",   0.03,    date(2029, 2, 15), 0.058, 2, "30/360"),
+        ("UKT 4.5% 07Dec2028",   0.045,   date(2028, 12, 7), 0.041, 2, "ACT/ACT"),
+        ("UKT 1.0% 31Jan2032",   0.01,    date(2032, 1, 31), 0.043, 2, "ACT/ACT"),
+        ("UKT 4.25% 07Jun2034",  0.0425,  date(2034, 6, 7),  0.042, 2, "ACT/ACT"),
+        ("Meta 4.45% 15Aug2029",  0.0445,  date(2029, 8, 15), 0.051, 2, "30/360"),
+        ("CRWV 3.0% 15Feb2029",   0.03,    date(2029, 2, 15), 0.058, 2, "30/360"),
     ]
     for name, cpn, mat, yld, freq, conv in bonds:
         result = price_bond(cpn, mat, freq, conv, None, 0.0, yld)
